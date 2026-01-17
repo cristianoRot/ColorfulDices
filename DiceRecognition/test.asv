@@ -1,0 +1,279 @@
+close all;
+clear all;
+
+img = imread("dices/images/dices_3_3.png");
+
+figure, imshow(img);
+
+hsv = rgb2hsv(img);
+H = hsv(:,:,1);
+S = hsv(:,:,2);
+V = hsv(:,:,3);
+
+figure, 
+subplot(1, 3, 1), imshow(H), title("H channel");
+subplot(1, 3, 2), imshow(S), title("S channel");
+subplot(1, 3, 3), imshow(V), title("V channel");
+
+%ottengo vassoio
+S = 1-S;
+S = S > 0.8;
+
+mask = imclose(S, strel("square", 51));
+
+figure, imshow(mask);
+
+%applico maschera a immagine originale
+img = img.*uint8(cat(3,mask,mask,mask));
+
+figure, imshow(img);
+
+%riconverto in HSV
+hsv = rgb2hsv(img);
+H = hsv(:,:,1);
+S = hsv(:,:,2);
+V = hsv(:,:,3);
+
+figure, 
+subplot(1, 3, 1), imshow(H), title("H channel");
+subplot(1, 3, 2), imshow(S), title("S channel");
+subplot(1, 3, 3), imshow(V), title("V channel");
+
+%NOTA: 0.1 funziona meglio su ices_3_3.png (quella piu problematica)
+%      0.15 per alcune meglio perche toglie riflessi vassoioi 
+S_bin = S > 0.1;
+
+figure, imshow(S_bin);
+
+%provo edge detection su S
+sobelFiltered = edge(rgb2gray(img), "sobel");
+figure, imshow(sobelFiltered), title("Edge Detection on S Channel");
+
+%fondo mask e sobel
+%senza sobel, soglia su S fa fatica con bianchi/neri e trasparenti
+combinedMask = sobelFiltered | S_bin;
+figure, imshow(combinedMask), title("combined Mask with Sobel");
+
+%morfologia per chiudere buchi e dividere dadi
+%provato un po di forme, disk sembrava funzionare meglio
+closedMask = imclose(combinedMask, strel("disk", 9));
+openedMask = imopen(closedMask, strel("disk", 15));
+
+figure, 
+subplot(1, 2, 1), imshow(closedMask), title("Closing");
+subplot(1, 2, 2), imshow(openedMask), title("Opening");
+
+%applico maschera a dadi
+imgDadi = img .* uint8(cat(3, openedMask, openedMask, openedMask));
+figure,
+subplot(1, 2, 1), imshow(imgDadi), title("Masked Dices");
+subplot(1, 2, 2), imshow(img), title("Original");
+
+%labelling e mostro com colori
+label = bwlabel(openedMask);
+
+%labelling e mostro con colori
+label = bwlabel(openedMask);
+coloredLabel = label2rgb(label, 'jet', 'k', 'shuffle');
+figure, imshow(coloredLabel), title("Labeled Dices (before separation)");
+
+%calcolo aree per ogni label
+stats = regionprops(label, 'Area', 'PixelIdxList');
+
+% calcolo statistiche per stimare aree grosse
+areas = [stats.Area];
+
+% stima media senza aree troppo grosse
+q75 = prctile(areas, 75);
+areas_normal = areas(areas <= q75);
+mean_area_corrected = mean(areas_normal);
+
+% stima soglia
+area_threshold = 1.5 * mean_area_corrected;  
+fprintf('\nUsando soglia: %.2f\n', area_threshold);
+
+% individuo regioni da separare
+mask_to_separate = false(size(openedMask));
+mask_ok = false(size(openedMask));
+
+for i = 1:length(stats)
+    if stats(i).Area > area_threshold
+        mask_to_separate(stats(i).PixelIdxList) = true;
+        fprintf('Regione %d (Area=%d) - da separare\n', i, round(stats(i).Area));
+    else
+        mask_ok(stats(i).PixelIdxList) = true;
+    end
+end
+
+figure,
+subplot(1, 2, 1), imshow(mask_to_separate), title('Da separare');
+subplot(1, 2, 2), imshow(mask_ok), title('OK');
+
+
+
+
+% --- da qui in poi generato per test ---
+% provato k-means e distance transform prima di questo
+
+
+% SEPARAZIONE CON VORONOI (TOP-N PEAKS)
+if any(mask_to_separate(:))
+    fprintf('\n=== SEPARAZIONE REGIONI GRANDI ===\n');
+    
+    cc_to_separate = bwconncomp(mask_to_separate);
+    mask_separated_all = false(size(mask_to_separate));
+    
+    for region_idx = 1:cc_to_separate.NumObjects
+        fprintf('\n--- Regione %d ---\n', region_idx);
+        
+        % Estrai singola regione
+        single_region = false(size(mask_to_separate));
+        single_region(cc_to_separate.PixelIdxList{region_idx}) = true;
+        
+        region_area = sum(single_region(:));
+        fprintf('Area: %d\n', region_area);
+        
+        % Stima numero dadi
+        estimated_dices = max(2, round(region_area / mean_area_corrected));
+        estimated_dices = min(estimated_dices, 8);
+        fprintf('Dadi stimati: %d\n', estimated_dices);
+        
+        % === TROVA TOP-N PICCHI ===
+        D = bwdist(~single_region);
+        D_smooth = imgaussfilt(D, 2);
+        
+        % Visualizza distance transform
+        figure,
+        subplot(1,2,1), imshow(single_region), title(sprintf('Regione %d', region_idx));
+        subplot(1,2,2), imshow(D_smooth,[]), colormap jet, colorbar, 
+            title('Distance Transform');
+        
+        % Trova i top N massimi locali
+        D_flat = D_smooth(:);
+        [sorted_vals, sorted_idx] = sort(D_flat, 'descend');
+        
+        % Parametro: distanza minima tra semi
+        % Adatta in base alla dimensione media dei dadi
+        avg_dice_radius = sqrt(mean_area_corrected / pi);
+        min_distance = avg_dice_radius * 0.9;  % 80% del raggio medio
+        fprintf('Distanza minima tra semi: %.1f pixel\n', min_distance);
+        
+        seed_coords = [];
+        
+        for i = 1:length(sorted_idx)
+            [y, x] = ind2sub(size(D_smooth), sorted_idx(i));
+            
+            % Deve essere dentro la regione
+            if ~single_region(y, x)
+                continue;
+            end
+            
+            % Controlla se è abbastanza lontano dagli altri semi
+            if isempty(seed_coords)
+                seed_coords = [seed_coords; x, y];
+            else
+                distances = sqrt((seed_coords(:,1)-x).^2 + (seed_coords(:,2)-y).^2);
+                if all(distances > min_distance)
+                    seed_coords = [seed_coords; x, y];
+                end
+            end
+            
+            % Fermati quando hai abbastanza semi
+            if size(seed_coords, 1) >= estimated_dices
+                break;
+            end
+        end
+        
+        num_seeds = size(seed_coords, 1);
+        fprintf('Semi trovati: %d\n', num_seeds);
+        
+        % Visualizza semi
+        figure,
+        imshow(single_region);
+        hold on;
+        plot(seed_coords(:,1), seed_coords(:,2), 'r*', 'MarkerSize', 20, 'LineWidth', 3);
+        for s = 1:num_seeds
+            text(seed_coords(s,1), seed_coords(s,2), sprintf('%d', s), ...
+                 'Color', 'yellow', 'FontSize', 16, 'FontWeight', 'bold', ...
+                 'HorizontalAlignment', 'center');
+        end
+        % Disegna cerchi di min_distance
+        viscircles(seed_coords, repmat(min_distance, num_seeds, 1), ...
+                  'EdgeColor', 'g', 'LineWidth', 1);
+        title(sprintf('Regione %d: %d semi (target: %d)', ...
+                     region_idx, num_seeds, estimated_dices));
+        hold off;
+        
+        % === WATERSHED CON QUESTI SEMI ===
+        if num_seeds > 0
+            % Crea maschera dei semi
+            seeds_mask = false(size(single_region));
+            for s = 1:num_seeds
+                seeds_mask(seed_coords(s,2), seed_coords(s,1)) = true;
+            end
+            
+            % Dilata leggermente i semi
+            seeds_mask = imdilate(seeds_mask, strel('disk', 3));
+            
+            % Watershed
+            D_imposed = imimposemin(-D, seeds_mask);
+            L = watershed(D_imposed);
+            
+            % Visualizza watershed
+            figure,
+            subplot(1,3,1), imshow(single_region), title('Originale');
+            subplot(1,3,2), imshow(label2rgb(L,'jet','w')), title('Watershed');
+            
+            % Applica risultato
+            region_separated = single_region;
+            region_separated(L == 0) = 0;  % Rimuovi confini
+            
+            subplot(1,3,3), imshow(region_separated), title('Separato');
+            
+            mask_separated_all = mask_separated_all | region_separated;
+        else
+            fprintf('  ATTENZIONE: Nessun seme trovato!\n');
+            mask_separated_all = mask_separated_all | single_region;
+        end
+    end
+    
+    % Combina con regioni OK
+    final_mask = mask_ok | mask_separated_all;
+    
+    figure,
+    subplot(1,3,1), imshow(mask_to_separate), title('Prima');
+    subplot(1,3,2), imshow(mask_separated_all), title('Dopo');
+    subplot(1,3,3), imshow(final_mask), title('Finale');
+else
+    fprintf('Nessuna regione da separare!\n');
+    final_mask = mask_ok;
+end
+
+% === LABELING FINALE ===
+final_labels = bwlabel(final_mask);
+num_dices = max(final_labels(:));
+fprintf('\n=== RISULTATO FINALE: %d dadi ===\n', num_dices);
+
+% Visualizza risultato finale
+colored_final = label2rgb(final_labels, 'jet', 'k', 'shuffle');
+figure, imshow(colored_final), title(sprintf('Risultato: %d dadi', num_dices));
+
+% Sovrapponi numeri all'immagine originale
+figure, imshow(img);
+hold on;
+final_stats = regionprops(final_labels, 'BoundingBox', 'Centroid');
+for i = 1:length(final_stats)
+    bbox = final_stats(i).BoundingBox;
+    rectangle('Position', bbox, 'EdgeColor', 'r', 'LineWidth', 2);
+    
+    text(final_stats(i).Centroid(1), final_stats(i).Centroid(2), sprintf('%d', i), ...
+         'Color', 'red', 'FontSize', 11, 'FontWeight', 'bold', ...
+         'HorizontalAlignment', 'center', "EdgeColor", "black");
+end
+title(sprintf('Dadi rilevati: %d', num_dices));
+hold off;
+
+% visualizza maschera solo dadi
+dices_img = img .* uint8(cat(3, final_mask, final_mask, final_mask));
+figure, 
+imshow(dices_img), title("final masked image");
