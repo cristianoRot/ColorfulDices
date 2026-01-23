@@ -3,34 +3,22 @@ function out = main(image, mask)
     numDices = length(dices);
     
     for i = 1:numDices
-        [im1, imalabel, bw] = extractPixelsNumber(dices{i});
+        bw = extractPixelsNumber(dices{i});
         [holes, pa] = extractFeatures(bw);
-
-        number = predict(holes, pa);
-
-        fprintf('Number Predicted: %d\n', number);
-
-        % Debug.
         
         figure;
-        subplot(1, 5, 1);
+        subplot(1, 3, 1);
         imshow(dices{i});
         title('Original Dice');
 
-        subplot(1, 5, 2);
-        imshow(im1);
-        title('Debug Image');
-
-        subplot(1, 5, 3);
-        imshow(imalabel);
-        title('Labels');
+        ycbcr
         
-        subplot(1, 5, 4);
+        subplot(1, 3, 2);
         imshow(bw);
         title('Extracted Pixels');
         
         % Table with features
-        h = subplot(1, 5, 5);
+        h = subplot(1, 3, 3);
         pos = get(h, 'Position');
         delete(h);
         

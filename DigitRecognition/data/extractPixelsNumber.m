@@ -1,17 +1,21 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function out = extractPixelsNumber(image)        
+function [im1, imalabel, bw] = extractPixelsNumber(image)        
     ycbcr = rgb2ycbcr(image);
     Y = ycbcr(:,:,1);
+
+    H = [ -1 -1 -1; 
+          -1  9 -1; 
+          -1 -1 -1 ];
+    Y = imfilter(Y, H, 'replicate');
+
+    im1 = Y;
 
     if mean(Y) > 0.5
         Y = 1 - Y;
     end
-    
-    Y_denoised = medfilt2(Y, [3 3]);
         
-    BW = imbinarize(Y_denoised, 'adaptive', 'Sensitivity', 0.5);
-
+    BW = imbinarize(Y, 'adaptive', 'Sensitivity', 0.5);
     BW = imopen(BW, strel('disk', 1));
 
     borderPixels = [BW(1,:), BW(end,:), BW(:,1)', BW(:,end)'];
@@ -21,6 +25,8 @@ function out = extractPixelsNumber(image)
     end
         
     labels = bwlabel(BW);
+
+    imalabel = labels;
 
     numLabelIndex = -1;
     minDist = inf;
@@ -37,9 +43,9 @@ function out = extractPixelsNumber(image)
 
     end
 
-    out = labels == numLabelIndex; 
+    bw = labels == numLabelIndex; 
 
-    out = imclose(out, strel('disk', 2));
+    bw = imclose(bw, strel('disk', 3));
 end
 
 function v = getDistToCenter(label)

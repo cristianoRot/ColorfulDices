@@ -1,16 +1,29 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function out = extractPixelsNumber(image)        
+function [im1, imalabel, bw] = extractPixelsNumber(image)        
     ycbcr = rgb2ycbcr(image);
     Y = ycbcr(:,:,1);
+
+    Y_eroded = imerode(Y, strel('disk', 1));
+
+    % 2. IL TUO LAPLACIANO AGGRESSIVO
+    H = [ -1 -1 -1; 
+          -1  9 -1; 
+          -1 -1 -1 ];
+    Y_sharp = imfilter(Y_eroded, H, 'replicate');
+    
+    % 3. CONTRAST STRETCHING (Forza i neri a essere neri e i bianchi bianchi)
+    Y_final = imadjust(Y_sharp, stretchlim(Y_sharp), []);
+
+    im1 = Y;
 
     if mean(Y) > 0.5
         Y = 1 - Y;
     end
-    
-    Y_denoised = medfilt2(Y, [3 3]);
         
-    BW = imbinarize(Y_denoised, 'adaptive', 'Sensitivity', 0.5);
+    BW = imbinarize(Y, 'adaptive', 'Sensitivity', 0.5);
+
+    BW = imopen(BW, strel('disk', 1));
 
     borderPixels = [BW(1,:), BW(end,:), BW(:,1)', BW(:,end)'];
 
@@ -19,6 +32,8 @@ function out = extractPixelsNumber(image)
     end
         
     labels = bwlabel(BW);
+
+    imalabel = labels;
 
     numLabelIndex = -1;
     minDist = inf;
@@ -35,21 +50,22 @@ function out = extractPixelsNumber(image)
 
     end
 
-    out = labels == numLabelIndex;
+    bw = labels == numLabelIndex; 
 
-    out = imclose(out, strel('disk', 2));
+    bw = imclose(bw, strel('disk', 3));
 end
 
 function v = getDistToCenter(label)
     [h, w] = size(label);
-    center = [w, h] / 2;
+    centerImg = [w / 2, h / 2];
     
-    s = regionprops(label, 'Centroid', 'Area');
+    [r, c] = find(label);
     
-    if isempty(s) || s(1).Area < (h * w * 0.02)
+    if isempty(r) || length(r) < (h * w * 0.02)
         v = inf;
-    else
-        c = s(1).Centroid;
-        v = norm(c - center);
+        return;
     end
+
+    distances = sqrt((c - centerImg(1)).^2 + (r - centerImg(2)).^2);
+    v = min(distances);
 end
