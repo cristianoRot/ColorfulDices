@@ -1,32 +1,17 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function [im1, imalabel, bw] = extractPixelsNumber(image)        
-    ycbcr = rgb2ycbcr(image);
-    Y = ycbcr(:,:,1);
+function [KMlabels, KMbw, labels, out] = extractPixelsNumber(image)    
+    [high, width, ~] = size(image);
+    image = im2double(image);
+    
+    data = getFeaturesVector(image);
 
-    H = [ -1 -1 -1; 
-          -1  9 -1; 
-          -1 -1 -1 ];
-    Y = imfilter(Y, H, 'replicate');
+    KMlabels = kmeans(data, 3, 'Replicates', 3, 'MaxIter', 500);
+    KMlabels = reshape(KMlabels, high, width);
+    KMbw = getBWformLabel(KMlabels);
 
-    im1 = Y;
-
-    if mean(Y) > 0.5
-        Y = 1 - Y;
-    end
-        
-    BW = imbinarize(Y, 'adaptive', 'Sensitivity', 0.5);
-    BW = imopen(BW, strel('disk', 1));
-
-    borderPixels = [BW(1,:), BW(end,:), BW(:,1)', BW(:,end)'];
-
-    if mean(borderPixels) > 0.5
-        BW = ~BW;
-    end
-        
-    labels = bwlabel(BW);
-
-    imalabel = labels;
+    labels = bwlabel(KMbw);
+    labels = getLabelsFiltered(labels);
 
     numLabelIndex = -1;
     minDist = inf;
@@ -43,9 +28,53 @@ function [im1, imalabel, bw] = extractPixelsNumber(image)
 
     end
 
-    bw = labels == numLabelIndex; 
+    out = labels == numLabelIndex;
+end
 
-    bw = imclose(bw, strel('disk', 3));
+function bw = getBWformLabel(labels)
+    [h, w] = size(labels);
+    bw = zeros(h, w);
+
+    % Add edges
+    for r = 2:h - 1
+        for c = 2:w - 1
+            v = labels(r, c);
+
+            v1 = labels(r, c - 1);
+            v2 = labels(r, c + 1);
+            v3 = labels(r + 1, c);
+            v4 = labels(r - 1, c);
+            
+            if (v ~= v1) || (v ~= v2) || (v ~= v3) || (v ~= v4)
+                bw(r, c) = 0;
+            else
+                bw(r, c) = 1;
+            end
+        end
+    end
+
+    bw = bw > 0;
+end
+
+function labels = getLabelsFiltered(labels)
+    [h, w] = size(labels);
+    bw = zeros(h, w);
+
+    for i = 1:max(labels(:))
+        im = labels == i;
+    
+        [r, c] = find(im);
+        totArea = h * w;
+        regionArea = length(r);
+
+        minArea = totArea * 0.01;
+        maxArea = totArea * 0.07;
+    
+        if isempty(r) || regionArea < minArea || regionArea > maxArea
+            mask = labels ~= i;
+            labels = labels .* mask;
+        end
+    end
 end
 
 function v = getDistToCenter(label)
@@ -54,11 +83,30 @@ function v = getDistToCenter(label)
     
     [r, c] = find(label);
     
-    if isempty(r) || length(r) < (h * w * 0.02)
+    if isempty(r)
         v = inf;
         return;
     end
 
-    distances = sqrt((c - centerImg(1)).^2 + (r - centerImg(2)).^2);
-    v = min(distances);
+    meanC = mean(c);
+    meanR = mean(r);
+    
+    v = sqrt((meanC - centerImg(1))^2 + (meanR - centerImg(2))^2);
+end
+
+function data = getFeaturesVector(image)
+    lab = rgb2lab(image);
+
+    rgb_vec = reshape(image, [], 3);
+    lab_vec = reshape(lab, [], 3);
+
+    data = [rgb_vec, lab_vec];
+
+    min_val = min(data);
+    max_val = max(data);
+    range_val = max_val - min_val;
+    
+    range_val(range_val == 0) = 1;
+
+    data = (data - min_val) ./ range_val;
 end

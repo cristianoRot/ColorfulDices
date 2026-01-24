@@ -1,19 +1,45 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function [im1, imalabel, bw] = extractPixelsNumber(image)        
+function [im1, imalabel, bw] = extractPixelsNumber(image)    
+    [high, width, ~] = size(image);
+    lab_im = rgb2lab(im2double(image));
+
+    data = reshape(lab_im, [], 3);
+
+    labels = kmeans(data, 3);
+    labels = reshape(labels, high, width);
+
+    im1 = lab_im;
+    bw = getBWformLabel(labels);
+
+    labels = bwlabel(BW);
+
+    numLabelIndex = -1;
+    minDist = inf;
+
+    for i = 1:max(labels(:))
+        im = labels == i;
+
+        dist = getDistToCenter(im);
+
+        if minDist > dist
+            numLabelIndex = i;
+            minDist = dist;
+        end
+
+    end
+
+    bw = labels == numLabelIndex;
+
+    %{
+
     ycbcr = rgb2ycbcr(image);
     Y = ycbcr(:,:,1);
 
-    Y_eroded = imerode(Y, strel('disk', 1));
-
-    % 2. IL TUO LAPLACIANO AGGRESSIVO
     H = [ -1 -1 -1; 
           -1  9 -1; 
           -1 -1 -1 ];
-    Y_sharp = imfilter(Y_eroded, H, 'replicate');
-    
-    % 3. CONTRAST STRETCHING (Forza i neri a essere neri e i bianchi bianchi)
-    Y_final = imadjust(Y_sharp, stretchlim(Y_sharp), []);
+    Y = imfilter(Y, H, 'replicate');
 
     im1 = Y;
 
@@ -22,7 +48,6 @@ function [im1, imalabel, bw] = extractPixelsNumber(image)
     end
         
     BW = imbinarize(Y, 'adaptive', 'Sensitivity', 0.5);
-
     BW = imopen(BW, strel('disk', 1));
 
     borderPixels = [BW(1,:), BW(end,:), BW(:,1)', BW(:,end)'];
@@ -53,6 +78,51 @@ function [im1, imalabel, bw] = extractPixelsNumber(image)
     bw = labels == numLabelIndex; 
 
     bw = imclose(bw, strel('disk', 3));
+    
+    %}
+
+end
+
+function bw = getBWformLabel(labels)
+    [h, w] = size(labels);
+    bw = zeros(h, w);
+
+    labelArea = zeros(1, max(labels(:)));
+
+    for r = 1:h
+        for c = 1:w
+            v = labels(r, c);
+
+            labelArea(v) = labelArea(v) + 1;
+        end
+    end
+
+    [~, bg_index] = max(labelArea);
+
+    % Add edges
+    for r = 2:h - 1
+        for c = 2:w - 1
+            v = labels(r, c);
+            
+            if v == bg_index
+                bw(r, c) = 0;
+                continue;
+            end
+
+            v1 = labels(r, c - 1);
+            v2 = labels(r, c + 1);
+            v3 = labels(r + 1, c);
+            v4 = labels(r - 1, c);
+            
+            if (v ~= v1) || (v ~= v2) || (v ~= v3) || (v ~= v4)
+                bw(r, c) = 0;
+            else
+                bw(r, c) = v;
+            end
+        end
+    end
+
+    bw = bw > 0;
 end
 
 function v = getDistToCenter(label)
@@ -60,8 +130,9 @@ function v = getDistToCenter(label)
     centerImg = [w / 2, h / 2];
     
     [r, c] = find(label);
+    totArea = h * w;
     
-    if isempty(r) || length(r) < (h * w * 0.02)
+    if isempty(r) || length(r) < (totArea * 0.02) | length(r) > (totArea * 0.3)
         v = inf;
         return;
     end
