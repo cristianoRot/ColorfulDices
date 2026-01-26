@@ -1,4 +1,10 @@
-function out = main(image, mask)
+% test.m - Cristiano Rotunno 914317
+
+function out = test()
+    close all;
+    image = imread('../data/img0.png');
+    mask = imread('../data/mask0.png');    
+    
     dices = extractDices(image, mask);
     numDices = length(dices);
     

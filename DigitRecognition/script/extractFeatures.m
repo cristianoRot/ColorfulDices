@@ -11,7 +11,7 @@ function [holes, pa] = extractFeatures(bw)
     
     for r = 2:h - 1
         for c = 2:w - 1
-            if bw(r, c) == 1;
+            if bw(r, c) == 1
                 total_area = total_area + 1;
                 
                 v1 = bw(r, c - 1);

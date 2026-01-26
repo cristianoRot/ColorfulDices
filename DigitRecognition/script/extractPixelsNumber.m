@@ -6,7 +6,9 @@ function [KMlabels, KMbw, labels, out] = extractPixelsNumber(image)
     
     data = getFeaturesVector(image);
 
-    KMlabels = kmeans(data, 3, 'Replicates', 3, 'MaxIter', 500);
+    k = 4;
+
+    KMlabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
     KMlabels = reshape(KMlabels, high, width);
     KMbw = getBWformLabel(KMlabels);
 
@@ -58,19 +60,16 @@ end
 
 function labels = getLabelsFiltered(labels)
     [h, w] = size(labels);
-    bw = zeros(h, w);
-
     for i = 1:max(labels(:))
         im = labels == i;
     
-        [r, c] = find(im);
+        regionArea = sum(im(:));
         totArea = h * w;
-        regionArea = length(r);
 
         minArea = totArea * 0.01;
         maxArea = totArea * 0.07;
     
-        if isempty(r) || regionArea < minArea || regionArea > maxArea
+        if regionArea == 0 || regionArea < minArea || regionArea > maxArea
             mask = labels ~= i;
             labels = labels .* mask;
         end
