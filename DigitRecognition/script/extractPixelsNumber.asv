@@ -1,128 +1,75 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function [im1, imalabel, bw] = extractPixelsNumber(image)    
+function [KMlabels, labels, out] = extractPixelsNumber(image)    
     [high, width, ~] = size(image);
-    lab_im = rgb2lab(im2double(image));
-
-    data = reshape(lab_im, [], 3);
-
-    labels = kmeans(data, 3);
-    labels = reshape(labels, high, width);
-
-    im1 = lab_im;
-    bw = getBWformLabel(labels);
-
-    labels = bwlabel(BW);
-
-    numLabelIndex = -1;
-    minDist = inf;
-
-    for i = 1:max(labels(:))
-        im = labels == i;
-
-        dist = getDistToCenter(im);
-
-        if minDist > dist
-            numLabelIndex = i;
-            minDist = dist;
-        end
-
-    end
-
-    bw = labels == numLabelIndex;
-
-    %{
-
-    ycbcr = rgb2ycbcr(image);
-    Y = ycbcr(:,:,1);
-
-    H = [ -1 -1 -1; 
-          -1  9 -1; 
-          -1 -1 -1 ];
-    Y = imfilter(Y, H, 'replicate');
-
-    im1 = Y;
-
-    if mean(Y) > 0.5
-        Y = 1 - Y;
-    end
-        
-    BW = imbinarize(Y, 'adaptive', 'Sensitivity', 0.5);
-    BW = imopen(BW, strel('disk', 1));
-
-    borderPixels = [BW(1,:), BW(end,:), BW(:,1)', BW(:,end)'];
-
-    if mean(borderPixels) > 0.5
-        BW = ~BW;
-    end
-        
-    labels = bwlabel(BW);
-
-    imalabel = labels;
-
-    numLabelIndex = -1;
-    minDist = inf;
-
-    for i = 1:max(labels(:))
-        im = labels == i;
-
-        dist = getDistToCenter(im);
-
-        if minDist > dist
-            numLabelIndex = i;
-            minDist = dist;
-        end
-
-    end
-
-    bw = labels == numLabelIndex; 
-
-    bw = imclose(bw, strel('disk', 3));
+    image = im2double(image);
     
-    %}
+    data = getFeaturesVector(image);
 
+    k = 6;
+
+    KMlabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
+    KMlabels = reshape(KMlabels, high, width);
+
+    labels = separateClusters(KMlabels);
+    labels = getLabelsFiltered(labels);
+
+    numLabelIndex = -1;
+    minDist = inf;
+
+    for i = 1:max(labels(:))
+        im = labels == i;
+
+        dist = getDistToCenter(im);
+
+        if minDist > dist
+            numLabelIndex = i;
+            minDist = dist;
+        end
+
+    end
+
+    out = labels == numLabelIndex;
+    out = imclose(out, strel('disk', 1));
 end
 
-function bw = getBWformLabel(labels)
+function out = separateClusters(KMlabels)
+    [h, w] = size(KMlabels);
+    out = zeros(h, w);
+    nextID = 1;
+    k = max(KMlabels(:));
+    
+    for c = 1:k
+        currentClusterMask = (KMlabels == c);
+        
+        [objLabels, numObjs] = bwlabel(currentClusterMask);
+        
+        for n = 1:numObjs
+            out(objLabels == n) = nextID;
+            nextID = nextID + 1;
+        end
+    end
+end
+
+function labels = getLabelsFiltered(labels)
     [h, w] = size(labels);
-    bw = zeros(h, w);
+    totArea = h * w;
+    
+    stats = regionprops(labels, 'Area', 'Solidity');
+    
+    for i = 1:numel(stats)
+        if stats(i).Area == 0, continue; end
+        
+        regionArea = stats(i).Area;
+        solidity = stats(i).Solidity;
 
-    labelArea = zeros(1, max(labels(:)));
+        isAreaWrong = regionArea < (totArea * 0.02) || regionArea > (totArea * 0.97);
+        isNotSolid = solidity < 0.; 
 
-    for r = 1:h
-        for c = 1:w
-            v = labels(r, c);
-
-            labelArea(v) = labelArea(v) + 1;
+        if isAreaWrong || isNotSolid
+            labels(labels == i) = 0;
         end
     end
-
-    [~, bg_index] = max(labelArea);
-
-    % Add edges
-    for r = 2:h - 1
-        for c = 2:w - 1
-            v = labels(r, c);
-            
-            if v == bg_index
-                bw(r, c) = 0;
-                continue;
-            end
-
-            v1 = labels(r, c - 1);
-            v2 = labels(r, c + 1);
-            v3 = labels(r + 1, c);
-            v4 = labels(r - 1, c);
-            
-            if (v ~= v1) || (v ~= v2) || (v ~= v3) || (v ~= v4)
-                bw(r, c) = 0;
-            else
-                bw(r, c) = v;
-            end
-        end
-    end
-
-    bw = bw > 0;
 end
 
 function v = getDistToCenter(label)
@@ -130,13 +77,32 @@ function v = getDistToCenter(label)
     centerImg = [w / 2, h / 2];
     
     [r, c] = find(label);
-    totArea = h * w;
     
-    if isempty(r) || length(r) < (totArea * 0.02) | length(r) > (totArea * 0.3)
+    if isempty(r)
         v = inf;
         return;
     end
 
-    distances = sqrt((c - centerImg(1)).^2 + (r - centerImg(2)).^2);
-    v = min(distances);
+    meanC = mean(c);
+    meanR = mean(r);
+    
+    v = sqrt((meanC - centerImg(1))^2 + (meanR - centerImg(2))^2);
+end
+
+function data = getFeaturesVector(image)
+    lab = rgb2lab(image);
+    hsv = rgb2hsv(image);
+    
+    lab_vec = reshape(lab, [], 3);
+    s_vec = reshape(hsv(:,:,2), [], 1);
+    
+    data = [lab_vec, s_vec];
+
+    min_val = min(data);
+    max_val = max(data);
+    range_val = max_val - min_val;
+    
+    range_val(range_val == 0) = 1;
+
+    data = (data - min_val) ./ range_val;
 end

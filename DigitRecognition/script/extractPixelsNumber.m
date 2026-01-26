@@ -1,18 +1,17 @@
 % extractPixelsNumber.m - Cristiano Rotunno 914317
 
-function [KMlabels, KMbw, labels, out] = extractPixelsNumber(image)    
+function [KMlabels, labels, out] = extractPixelsNumber(image)    
     [high, width, ~] = size(image);
     image = im2double(image);
     
     data = getFeaturesVector(image);
 
-    k = 4;
+    k = 6;
 
     KMlabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
     KMlabels = reshape(KMlabels, high, width);
-    KMbw = getBWformLabel(KMlabels);
 
-    labels = bwlabel(KMbw);
+    labels = separateClusters(KMlabels);
     labels = getLabelsFiltered(labels);
 
     numLabelIndex = -1;
@@ -31,47 +30,44 @@ function [KMlabels, KMbw, labels, out] = extractPixelsNumber(image)
     end
 
     out = labels == numLabelIndex;
+    out = imopen(out, strel('disk', 2));
 end
 
-function bw = getBWformLabel(labels)
-    [h, w] = size(labels);
-    bw = zeros(h, w);
-
-    % Add edges
-    for r = 2:h - 1
-        for c = 2:w - 1
-            v = labels(r, c);
-
-            v1 = labels(r, c - 1);
-            v2 = labels(r, c + 1);
-            v3 = labels(r + 1, c);
-            v4 = labels(r - 1, c);
-            
-            if (v ~= v1) || (v ~= v2) || (v ~= v3) || (v ~= v4)
-                bw(r, c) = 0;
-            else
-                bw(r, c) = 1;
-            end
+function out = separateClusters(KMlabels)
+    [h, w] = size(KMlabels);
+    out = zeros(h, w);
+    nextID = 1;
+    k = max(KMlabels(:));
+    
+    for c = 1:k
+        currentClusterMask = (KMlabels == c);
+        
+        [objLabels, numObjs] = bwlabel(currentClusterMask);
+        
+        for n = 1:numObjs
+            out(objLabels == n) = nextID;
+            nextID = nextID + 1;
         end
     end
-
-    bw = bw > 0;
 end
 
 function labels = getLabelsFiltered(labels)
     [h, w] = size(labels);
-    for i = 1:max(labels(:))
-        im = labels == i;
+    totArea = h * w;
     
-        regionArea = sum(im(:));
-        totArea = h * w;
+    stats = regionprops(labels, 'Area', 'Solidity');
+    
+    for i = 1:numel(stats)
+        if stats(i).Area == 0, continue; end
+        
+        regionArea = stats(i).Area;
+        solidity = stats(i).Solidity;
 
-        minArea = totArea * 0.01;
-        maxArea = totArea * 0.07;
-    
-        if regionArea == 0 || regionArea < minArea || regionArea > maxArea
-            mask = labels ~= i;
-            labels = labels .* mask;
+        isAreaWrong = regionArea < (totArea * 0.02) || regionArea > (totArea * 0.08);
+        isNotSolid = solidity < 0.3; 
+
+        if isAreaWrong || isNotSolid
+            labels(labels == i) = 0;
         end
     end
 end
@@ -95,11 +91,12 @@ end
 
 function data = getFeaturesVector(image)
     lab = rgb2lab(image);
-
-    rgb_vec = reshape(image, [], 3);
+    hsv = rgb2hsv(image);
+    
     lab_vec = reshape(lab, [], 3);
-
-    data = [rgb_vec, lab_vec];
+    s_vec = reshape(hsv(:,:,2), [], 1);
+    
+    data = [lab_vec, s_vec];
 
     min_val = min(data);
     max_val = max(data);

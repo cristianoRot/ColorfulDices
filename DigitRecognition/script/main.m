@@ -5,7 +5,7 @@ function out = main(image, mask)
     numDices = length(dices);
     
     for i = 1:numDices
-        [KMlabels, KMbw, labels, out] = extractPixelsNumber(dices{i});
+        [KMlabels, labels, out] = extractPixelsNumber(dices{i});
         [holes, pa] = extractFeatures(out);
 
         number = predict(holes, pa);
@@ -15,25 +15,21 @@ function out = main(image, mask)
         % Debug.
         
         figure;
-        subplot(2, 5, 1);
+        subplot(2, 4, 1);
         imshow(dices{i});
         title('Original Dice');
 
-        subplot(2, 5, 2);
+        subplot(2, 4, 2);
         imagesc(KMlabels);
         title('K-Means Labels');
         axis image;
 
-        subplot(2, 5, 3);
-        imshow(KMbw);
-        title('Binary Map (Edges Removed)');
-
-        subplot(2, 5, 4);
+        subplot(2, 4, 3);
         imagesc(labels);
         title('Filtered Components');
         axis image;
         
-        subplot(2, 5, 5);
+        subplot(2, 4, 4);
         imshow(out);
         title('Final Selection');
         
