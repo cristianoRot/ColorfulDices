@@ -30,7 +30,7 @@ function [KMlabels, labels, out] = extractPixelsNumber(image)
     end
 
     out = labels == numLabelIndex;
-    out = imopen(out, strel('disk', 2));
+    out = adjustNumberImage(out, 20);
 end
 
 function out = separateClusters(KMlabels)
@@ -87,6 +87,19 @@ function v = getDistToCenter(label)
     meanR = mean(r);
     
     v = sqrt((meanC - centerImg(1))^2 + (meanR - centerImg(2))^2);
+end
+
+function bw = adjustNumberImage(bw, T)
+    filledAll = imfill(bw, 'holes');
+    holesMask = filledAll & ~bw;
+
+    stats = regionprops(holesMask, 'Area', 'PixelIdxList');
+    
+    for i = 1:length(stats)
+        if stats(i).Area <= T
+            bw(stats(i).PixelIdxList) = 1;
+        end
+    end
 end
 
 function data = getFeaturesVector(image)

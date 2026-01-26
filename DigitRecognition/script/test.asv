@@ -2,8 +2,8 @@
 
 function out = test()
     close all;
-    image = imread('../data/img0.png');
-    mask = imread('../data/mask0.png');    
+    image = imread('../data/img1.png');
+    mask = imread('../data/mask1.png');    
     
     dices = extractDices(image, mask);
     numDices = length(dices);
@@ -11,7 +11,8 @@ function out = test()
     for i = 1:numDices
         [KMlabels, labels, out] = extractPixelsNumber(dices{i});
         vector = extractFeatures(out);
-        number = predict(vector);
+
+        number = predict(holes, pa);
 
         % Debug.
         
@@ -34,15 +35,7 @@ function out = test()
         imshow(out);
         title('Final Selection');
         
-        data = {
-            'Holes', vector(1); 
-            'Solidity', vector(2); 
-            'Extent', vector(3); 
-            'Eccentricity', vector(4);
-            'Circularity', vector(5);
-            'CentroidDist', vector(6);
-            'Predicted', number
-        };
+        data = {'Holes', holes; 'P^2/A', pa; 'Predicted', number};
         columnNames = {'Feature', 'Value'};
 
         uitable('Data', data, ...
