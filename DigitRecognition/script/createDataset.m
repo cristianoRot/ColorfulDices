@@ -66,7 +66,7 @@ function createDataset()
         end
 
         % Estrai i singoli dadi usando la funzione esistente
-        dices = extractDices(im, mask);
+        [dices, ~] = extractDices(im, mask);
         
         for i = 1:length(dices)
             singleDice = dices{i};
@@ -101,10 +101,10 @@ function createDataset()
             featData = {
                 'Holes', vector(1);
                 'Solidity', vector(2);
-                'Extent', vector(3);
-                'Eccentricity', vector(4);
-                'Circularity', vector(5);
-                'CentroidDist', vector(6)
+                'Eccentricity', vector(3);
+                'Circularity', vector(4);
+                'Extent', vector(5);
+                'PerimAreaRatio', vector(6)
             };
             
             uitable('Data', featData, ...
@@ -141,7 +141,7 @@ function createDataset()
                 if fid == -1
                     error('Impossibile creare il file CSV');
                 end
-                fprintf(fid, 'Holes,Solidity,Extent,Eccentricity,Circularity,CentroidDist,Label\n');
+                fprintf(fid, 'Holes,Solidity,Eccentricity,Circularity,Extent,PerimAreaRatio,Label\n');
                 fclose(fid);
             end
             

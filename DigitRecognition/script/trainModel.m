@@ -8,5 +8,5 @@ function trainModel()
     
     mdl = fitcknn(X, Y, 'NumNeighbors', 3, 'Standardize', true);
    
-    save('model.mat', 'mdl');
+    save('../model.mat', 'mdl');
 end

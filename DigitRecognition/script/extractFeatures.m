@@ -21,13 +21,10 @@ function vector = extractFeatures(bw)
         circularity = 0;
     end
     
-    centroidDist = 0;
+    perimAreaRatio = 0;
     if s.Area > 0
-        [h, w] = size(bw);
-        [r, c] = find(bw);
-        dist = sqrt((mean(c) - w/2)^2 + (mean(r) - h/2)^2);
-        centroidDist = dist / max(h, w);
+        perimAreaRatio = s.Perimeter / s.Area;
     end
 
-    vector = [holes, solidity, extent, eccentricity, circularity, centroidDist];
+    vector = [holes, solidity, eccentricity, circularity, extent, perimAreaRatio];
 end

@@ -1,17 +1,22 @@
 % extractDices.m - Cristiano Rotunno 914317
 
-function dices_images = extractDices(image, mask)
+function [dices_images, bboxes] = extractDices(image, mask)
     mask = logical(mask);
     [labels, num_region] = bwlabel(mask);
     arr = getBoundingBox(image, labels, num_region);
     
     dices_images = {}; 
+    bboxes = zeros(num_region, 4);
     
     for i = 1:num_region  
         minX = arr(i, 1);        
         maxX = arr(i, 2);        
         minY = arr(i, 3);
         maxY = arr(i, 4);
+        
+        width = maxX - minX;
+        height = maxY - minY;
+        bboxes(i, :) = [minX, minY, width, height];
             
         R = arr(i, 6);
         G = arr(i, 7);

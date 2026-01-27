@@ -7,6 +7,13 @@ function [KMlabels, labels, out] = extractPixelsNumber(image)
     data = getFeaturesVector(image);
 
     k = 6;
+    
+    if size(data, 1) < k
+        KMlabels = zeros(high, width);
+        labels = zeros(high, width);
+        out = false(high, width);
+        return;
+    end
 
     KMlabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
     KMlabels = reshape(KMlabels, high, width);
@@ -30,7 +37,7 @@ function [KMlabels, labels, out] = extractPixelsNumber(image)
     end
 
     out = labels == numLabelIndex;
-    out = adjustNumberImage(out, 20);
+    out = adjustNumberImage(out, 10);
 end
 
 function out = separateClusters(KMlabels)
@@ -55,18 +62,33 @@ function labels = getLabelsFiltered(labels)
     [h, w] = size(labels);
     totArea = h * w;
     
-    stats = regionprops(labels, 'Area', 'Solidity');
+    numLabels = max(labels(:));
     
-    for i = 1:numel(stats)
-        if stats(i).Area == 0, continue; end
+    for i = 1:numLabels
+        regionMask = (labels == i);
+        adjustedMask = adjustNumberImage(regionMask, 10);
         
-        regionArea = stats(i).Area;
-        solidity = stats(i).Solidity;
+        currentArea = sum(adjustedMask(:));
+        if currentArea < (totArea * 0.02) || currentArea > (totArea * 0.09)
+            labels(labels == i) = 0;
+            continue;
+        end
 
-        isAreaWrong = regionArea < (totArea * 0.02) || regionArea > (totArea * 0.08);
-        isNotSolid = solidity < 0.3; 
+        vec = extractFeatures(adjustedMask);
+        
+        solidity = vec(2);
+        eccentricity = vec(3);
+        circularity = vec(4);
+        extent = vec(5);
+        perimAreaRatio = vec(6);
+        
+        isSlopeWrong = solidity < 0.2 || solidity > 0.9;
+        isEccentricityWrong = eccentricity < 0.5; 
+        isCircularityWrong = circularity < 0.1 || circularity > 0.8;
+        isExtentWrong = extent < 0.15 || extent > 0.7; 
+        isPerimAreaRatioWrong = perimAreaRatio < 0.3 || perimAreaRatio > 1.4;
 
-        if isAreaWrong || isNotSolid
+        if isSlopeWrong || isEccentricityWrong || isCircularityWrong || isExtentWrong || isPerimAreaRatioWrong
             labels(labels == i) = 0;
         end
     end
@@ -90,13 +112,18 @@ function v = getDistToCenter(label)
 end
 
 function bw = adjustNumberImage(bw, T)
-    filledAll = imfill(bw, 'holes');
-    holesMask = filledAll & ~bw;
-
-    stats = regionprops(holesMask, 'Area', 'PixelIdxList');
+    invBw = ~bw;
+    [L, numRegions] = bwlabel(invBw, 4);
     
-    for i = 1:length(stats)
-        if stats(i).Area <= T
+    stats = regionprops(L, 'Area', 'PixelIdxList');
+    
+    if isempty(stats), return; end
+    
+    areas = [stats.Area];
+    [~, mainBackgroundIdx] = max(areas);
+    
+    for i = 1:numRegions
+        if i ~= mainBackgroundIdx && stats(i).Area <= T
             bw(stats(i).PixelIdxList) = 1;
         end
     end

@@ -5,7 +5,7 @@ function out = test()
     image = imread('../data/img0.png');
     mask = imread('../data/mask0.png');    
     
-    dices = extractDices(image, mask);
+    [dices, ~] = extractDices(image, mask);
     numDices = length(dices);
     
     for i = 1:numDices
@@ -37,10 +37,10 @@ function out = test()
         data = {
             'Holes', vector(1); 
             'Solidity', vector(2); 
-            'Extent', vector(3); 
-            'Eccentricity', vector(4);
-            'Circularity', vector(5);
-            'CentroidDist', vector(6);
+            'Eccentricity', vector(3);
+            'Circularity', vector(4);
+            'Extent', vector(5); 
+            'PerimAreaRatio', vector(6);
             'Predicted', number
         };
         columnNames = {'Feature', 'Value'};
