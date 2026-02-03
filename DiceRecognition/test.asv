@@ -3,17 +3,17 @@ clear all;
 
 img = imread("dices/images/dices_3_3.png");
 
-figure, imshow(img);
+%figure, imshow(img);
 
 hsv = rgb2hsv(img);
 H = hsv(:,:,1);
 S = hsv(:,:,2);
 V = hsv(:,:,3);
 
-figure, 
-subplot(1, 3, 1), imshow(H), title("H channel");
-subplot(1, 3, 2), imshow(S), title("S channel");
-subplot(1, 3, 3), imshow(V), title("V channel");
+%figure, 
+%subplot(1, 3, 1), imshow(H), title("H channel");
+%subplot(1, 3, 2), imshow(S), title("S channel");
+%subplot(1, 3, 3), imshow(V), title("V channel");
 
 %ottengo vassoio
 S = 1-S;
@@ -21,12 +21,12 @@ S = S > 0.8;
 
 mask = imclose(S, strel("square", 51));
 
-figure, imshow(mask);
+%figure, imshow(mask);
 
 %applico maschera a immagine originale
 img = img.*uint8(cat(3,mask,mask,mask));
 
-figure, imshow(img);
+%figure, imshow(img);
 
 %riconverto in HSV
 hsv = rgb2hsv(img);
@@ -34,40 +34,42 @@ H = hsv(:,:,1);
 S = hsv(:,:,2);
 V = hsv(:,:,3);
 
-figure, 
-subplot(1, 3, 1), imshow(H), title("H channel");
-subplot(1, 3, 2), imshow(S), title("S channel");
-subplot(1, 3, 3), imshow(V), title("V channel");
+%figure, 
+%subplot(1, 3, 1), imshow(H), title("H channel");
+%subplot(1, 3, 2), imshow(S), title("S channel");
+%subplot(1, 3, 3), imshow(V), title("V channel");
 
-%NOTA: 0.1 funziona meglio su ices_3_3.png (quella piu problematica)
-%      0.15 per alcune meglio perche toglie riflessi vassoioi 
+%NOTA: 0.1 funziona meglio su dices_3_3.png (quella piu problematica)
+%      0.15 per alcune meglio perche toglie riflessi vassoio
+%      forse si puo rimuovere soglia o sistemare con maschera
+%      approssimativa da change detection
 S_bin = S > 0.1;
 
-figure, imshow(S_bin);
+%figure, imshow(S_bin);
 
 %provo edge detection su S
 sobelFiltered = edge(rgb2gray(img), "sobel");
-figure, imshow(sobelFiltered), title("Edge Detection on S Channel");
+%figure, imshow(sobelFiltered), title("Edge Detection on S Channel");
 
 %fondo mask e sobel
 %senza sobel, soglia su S fa fatica con bianchi/neri e trasparenti
 combinedMask = sobelFiltered | S_bin;
-figure, imshow(combinedMask), title("combined Mask with Sobel");
+%figure, imshow(combinedMask), title("combined Mask with Sobel");
 
 %morfologia per chiudere buchi e dividere dadi
 %provato un po di forme, disk sembrava funzionare meglio
 closedMask = imclose(combinedMask, strel("disk", 9));
 openedMask = imopen(closedMask, strel("disk", 15));
 
-figure, 
-subplot(1, 2, 1), imshow(closedMask), title("Closing");
-subplot(1, 2, 2), imshow(openedMask), title("Opening");
+%figure, 
+%subplot(1, 2, 1), imshow(closedMask), title("Closing");
+%subplot(1, 2, 2), imshow(openedMask), title("Opening");
 
 %applico maschera a dadi
 imgDadi = img .* uint8(cat(3, openedMask, openedMask, openedMask));
-figure,
-subplot(1, 2, 1), imshow(imgDadi), title("Masked Dices");
-subplot(1, 2, 2), imshow(img), title("Original");
+%figure,
+%subplot(1, 2, 1), imshow(imgDadi), title("Masked Dices");
+%subplot(1, 2, 2), imshow(img), title("Original");
 
 %labelling e mostro com colori
 label = bwlabel(openedMask);
@@ -75,7 +77,7 @@ label = bwlabel(openedMask);
 %labelling e mostro con colori
 label = bwlabel(openedMask);
 coloredLabel = label2rgb(label, 'jet', 'k', 'shuffle');
-figure, imshow(coloredLabel), title("Labeled Dices (before separation)");
+%figure, imshow(coloredLabel), title("Labeled Dices (before separation)");
 
 %calcolo aree per ogni label
 stats = regionprops(label, 'Area', 'PixelIdxList');
@@ -105,7 +107,7 @@ for i = 1:length(stats)
     end
 end
 
-figure,
+%figure,
 subplot(1, 2, 1), imshow(mask_to_separate), title('Da separare');
 subplot(1, 2, 2), imshow(mask_ok), title('OK');
 

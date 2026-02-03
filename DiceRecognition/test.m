@@ -43,7 +43,10 @@ subplot(1, 3, 3), imshow(V), title("V channel");
 %      0.15 per alcune meglio perche toglie riflessi vassoio
 %      forse si puo rimuovere soglia o sistemare con maschera
 %      approssimativa da change detection
-S_bin = S > 0.1;
+
+t1 = graythresh(S);                   %calcolo thresh con otsu al posto di fissa
+S_bin = imbinarize(S, t1);              
+%S_bin = S > 0.15;
 
 figure, imshow(S_bin);
 
