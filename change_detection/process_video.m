@@ -1,20 +1,16 @@
-function process_video(filename)    
+function LanciArray = process_video(filename)    
     close all; 
     
     % --- 1. SETUP ---
-    [~, nome_video, ~] = fileparts(filename); 
-    nome_video = char(nome_video);
+    LanciArray = {}; % Inizializzo l'array vuoto per le immagini
     
-    cartella_out = fullfile('RISULTATI', nome_video);
-    if ~exist(cartella_out, 'dir'), mkdir(cartella_out); end
-    fprintf('--- ANALISI: %s ---\n', filename);
+    [~, nome_video, ~] = fileparts(filename);
+    fprintf('--- ANALISI con soglia adattiva: %s ---\n', filename);
 
     % --- 2. PARAMETRI ---
     box_area = [100, 0, 1080, 800]; 
-    
     soglia_movimento = 0.5;   
     soglia_deviazione = 9.1;  
-    
     frames_attesa = 10;       
     frames_cooldown = 50;     
     
@@ -43,7 +39,6 @@ function process_video(filename)
         hFig = figure('Name', 'Analisi Video', 'KeyPressFcn', @kPress);
     end
     
-    vidObj.CurrentTime = 0;
     fNum = 0;
 
     % --- 4. CICLO ---
@@ -53,7 +48,7 @@ function process_video(filename)
         process_frame_logic(hFig, fNum, frameRaw);
     end
     
-    fprintf('--- FINE. %d lanci salvati. ---\n\n', lanci_totali);
+    fprintf('--- FINE. %d lanci salvati nell''array. ---\n\n', lanci_totali);
 
     function kPress(~, e) 
         if strcmp(e.Key, 'escape'), stopVideo = true; end 
@@ -87,8 +82,8 @@ function process_video(filename)
             
             prev_gray = curr_gray;
             
-            % Adattamento luce
-            if movimento < soglia_movimento && deviazione_dadi < 8.0
+            % Adattamento Luce
+            if movimento < soglia_movimento && deviazione_dadi < 8.0 
                 bg_gray = uint8(double(bg_gray) * 0.95 + double(curr_gray) * 0.05);
             end
             
@@ -105,43 +100,35 @@ function process_video(filename)
             % --- DECISIONE ---
             if counter_fermo >= frames_attesa
                 
-                % Check se è VUOTO?
+                % [DEBUG] Stampo i valori prima di decidere
+                fprintf('[CHECK] F:%04d | Dev: %6.2f | ', n, deviazione_dadi);
+
                 is_dadi = (deviazione_dadi > soglia_deviazione);
                 
                 if is_dadi
                     
-                    % --- LOGICA SOGLIA DINAMICA per la gestione di tutti i video, i quali hanno soglie differenti ---
+                    % --- LOGICA SOGLIA DINAMICA ---
                     if deviazione_dadi < 13.0
-                        % Nel CASO del VIDEO 4: Dadi trasparenti, molti riflessi.
-                        % Serve soglia altissima per non fare doppi scatti (salvataggi).
-                        soglia_dup_dinamica = 7.5;
-                        
+                        soglia_dup_dinamica = 7.5; % Video 4
                     elseif deviazione_dadi > 25.0
-                        % Nel CASO del VIDEO 3: Contrasto estremo.
-                        % I duplicati qui sono forti (4.8).
-                        soglia_dup_dinamica = 6.0;
-                        
+                        soglia_dup_dinamica = 6.0; % Video 3
                     else
-                        % CASO STANDARD 
-                        % se i lanci veri sono simili (4.9 - 5.5).
-                        % Dobbiamo abbassare la soglia per salvarli
-                        soglia_dup_dinamica = 4.0;
+                        soglia_dup_dinamica = 4.0; % Standard
                     end
-                    % -----------------------------------------------------
 
-                    % Check se è DUPLICATO?
                     [is_new_visual, diff_last] = check_duplicate(curr_gray, last_saved_img, soglia_dup_dinamica);
-                    
                     delta_dev = abs(deviazione_dadi - last_dev_val);
                     is_new_structure = (delta_dev > 6.0); 
                     
                     if is_new_visual || is_new_structure
                         
                         lanci_totali = lanci_totali + 1;
-                        fprintf('>>> PRESO LANCIO %d (F:%d) | Dev: %.2f | Diff: %.2f (Soglia: %.1f)\n', ...
-                            lanci_totali, n, deviazione_dadi, diff_last, soglia_dup_dinamica);
                         
-                        imwrite(img_crop, fullfile(cartella_out, sprintf('Lancio_%02d.jpg', lanci_totali)));
+                        % --- SALVATAGGIO NELL'ARRAY ---
+                        LanciArray{end+1} = img_crop; 
+                        
+                        fprintf('>>> PRESO LANCIO %d | DiffDup: %.2f (Soglia: %.1f) | DeltaDev: %.2f\n', ...
+                            lanci_totali, diff_last, soglia_dup_dinamica, delta_dev);
                         
                         last_saved_img = curr_gray;
                         last_dev_val = deviazione_dadi;
@@ -151,14 +138,12 @@ function process_video(filename)
                         colore_stato = 'magenta';
                         msg = 'PRESO!';
                     else
-                        if mod(n, 20) == 0 % Stampo meno spesso i duplicati, faccio un debug per capire cosa viene fatto per ogni lancio
-                            fprintf('[DEBUG] F:%d | Dev:%.2f | Ignorato Duplicato (Diff: %.2f < %.1f)\n', ...
-                                n, deviazione_dadi, diff_last, soglia_dup_dinamica);
-                        end
+                        fprintf('SCARTATO: Duplicato (Diff: %.2f < %.1f)\n', diff_last, soglia_dup_dinamica);
                         msg = 'DUPLICATO';
                         colore_stato = 'cyan'; 
                     end
                 else
+                    fprintf('SCARTATO: Vuoto (Dev < %.1f)\n', soglia_deviazione);
                     msg = 'VUOTO'; 
                 end
             end
