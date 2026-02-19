@@ -1,0 +1,15 @@
+close all;
+clear all;
+
+addpath('./change_detection/');
+addpath('./DiceRecognition/script/');
+addpath('./DigitRecognition/script/');
+
+static_images = process_video("./videos/VIDEO-01.mp4");
+
+num_images = numel(static_images);
+
+for i = 1:num_images
+    image = static_images{i};
+    mask = 
+end

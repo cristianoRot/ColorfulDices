@@ -1,10 +1,10 @@
 clear all; close all;
 
 
-img = imread("../dices/images/dices_8_3.png");
+img = imread("../dices/images/dices_2_2.png");
 
 % Load your masks
-ground_truth = logical(rgb2gray(imread("../dices/masks/dices_8_3.png")));
+ground_truth = logical(rgb2gray(imread("../dices/masks/dices_2_2.png")));
 predicted = segment_dices(img);
 
 % Convert to vectors and calculate confusion matrix

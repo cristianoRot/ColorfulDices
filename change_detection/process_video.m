@@ -5,7 +5,6 @@ function LanciArray = process_video(filename)
     LanciArray = {}; % Inizializzo l'array vuoto per le immagini
     
     [~, nome_video, ~] = fileparts(filename);
-    fprintf('--- ANALISI con soglia adattiva: %s ---\n', filename);
 
     % --- 2. PARAMETRI ---
     box_area = [100, 0, 1080, 800]; 
@@ -33,11 +32,7 @@ function LanciArray = process_video(filename)
     timer_pausa = 0; 
     stopVideo = false;
     
-    try
-        hFig = figure('Name', ['Analisi: ', nome_video], 'KeyPressFcn', @kPress);
-    catch
-        hFig = figure('Name', 'Analisi Video', 'KeyPressFcn', @kPress);
-    end
+    % Remove figure creation and keypress handling (no interactive display)
     
     fNum = 0;
 
@@ -45,17 +40,15 @@ function LanciArray = process_video(filename)
     while hasFrame(vidObj) && not(stopVideo)
         frameRaw = readFrame(vidObj);
         fNum = fNum + 1;
-        process_frame_logic(hFig, fNum, frameRaw);
+        process_frame_logic([], fNum, frameRaw);
     end
-    
-    fprintf('--- FINE. %d lanci salvati nell''array. ---\n\n', lanci_totali);
 
     function kPress(~, e) 
         if strcmp(e.Key, 'escape'), stopVideo = true; end 
     end 
 
     % --- 5. LOGICA ---
-    function process_frame_logic(fig, n, frame)
+    function process_frame_logic(~, n, frame)
         
         colore_stato = 'yellow';
         msg = 'ANALISI';
@@ -100,9 +93,7 @@ function LanciArray = process_video(filename)
             % --- DECISIONE ---
             if counter_fermo >= frames_attesa
                 
-                % [DEBUG] Stampo i valori prima di decidere
-                fprintf('[CHECK] F:%04d | Dev: %6.2f | ', n, deviazione_dadi);
-
+                % [DEBUG] Removed visual display; keep concise logging
                 is_dadi = (deviazione_dadi > soglia_deviazione);
                 
                 if is_dadi
@@ -125,10 +116,7 @@ function LanciArray = process_video(filename)
                         lanci_totali = lanci_totali + 1;
                         
                         % --- SALVATAGGIO NELL'ARRAY ---
-                        LanciArray{end+1} = img_crop; 
-                        
-                        fprintf('>>> PRESO LANCIO %d | DiffDup: %.2f (Soglia: %.1f) | DeltaDev: %.2f\n', ...
-                            lanci_totali, diff_last, soglia_dup_dinamica, delta_dev);
+                        LanciArray{end+1} = img_crop;
                         
                         last_saved_img = curr_gray;
                         last_dev_val = deviazione_dadi;
@@ -138,22 +126,15 @@ function LanciArray = process_video(filename)
                         colore_stato = 'magenta';
                         msg = 'PRESO!';
                     else
-                        fprintf('SCARTATO: Duplicato (Diff: %.2f < %.1f)\n', diff_last, soglia_dup_dinamica);
                         msg = 'DUPLICATO';
                         colore_stato = 'cyan'; 
                     end
                 else
-                    fprintf('SCARTATO: Vuoto (Dev < %.1f)\n', soglia_deviazione);
                     msg = 'VUOTO'; 
                 end
             end
         end
         
-        if isvalid(fig) && mod(n, 2) == 0
-            img_vis = insertShape(frame, 'Rectangle', box_area, 'Color', colore_stato, 'LineWidth', 3);
-            txt = sprintf('L:%d | Dev:%.1f | %s', lanci_totali, deviazione_dadi, msg);
-            img_vis = insertText(img_vis, [10 10], txt, 'FontSize', 18, 'BoxColor', 'black', 'TextColor', 'white');
-            figure(fig); imshow(img_vis); drawnow limitrate;
-        end
+        % No interactive visualization or figure updates (removed)
     end
 end

@@ -5,7 +5,10 @@ function dices_mask = segment_dices_initial(img)
     V = hsv(:,:,3);
 
     t1 = graythresh(S); 
-    S_bin = imbinarize(S, t1);              
+    S_bin = imbinarize(S, t1);  
+
+    S = imgaussfilt(S, 1.3);
+    V = imgaussfilt(V, 1.3);
 
     edges_S = edge(S, 'prewitt');
     edges_V = edge(V, 'prewitt');

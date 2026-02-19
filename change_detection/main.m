@@ -1,11 +1,11 @@
 clear; clc; close all;
 
-filename = 'VIDEO-01.mp4'; 
+filename = '../videos/VIDEO-01.mp4'; 
 
 % Controlla se il file esiste prima di lanciare la funzione
 if exist(filename, 'file')
     % Analisi Video
-    ImmaginiLanci = process_video(filename);
+    ImmaginiLanci = process_video_debug(filename);
     num_lanci = length(ImmaginiLanci);
     
     disp(['Ho trovato ', num2str(num_lanci), ' lanci.']);
