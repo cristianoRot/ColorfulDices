@@ -32,17 +32,11 @@ function vector = extractFeatures(bw)
         radialVariance = 0;
     end
 
-    % PRIMO MOMENTO DI HU calcolato manualmente
+    % PRIMO MOMENTO DI HU
     if ~isempty(x)
         mu20 = sum((x - s.Centroid(1)).^2);
         mu02 = sum((y - s.Centroid(2)).^2);
-        
-        % Normalizzazione dei momenti centrali rispetto all'area (mu_00) al quadrato
-        % per garantire l'invarianza alla scala (indipendenza dalla distanza del dado).
-        eta20 = mu20 / (s.Area^2);
-        eta02 = mu02 / (s.Area^2);
-        
-        hu1 = eta20 + eta02;
+        hu1 = (mu20 + mu02) / (s.Area^2);
     else
         hu1 = 0;
     end
