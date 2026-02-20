@@ -114,8 +114,9 @@ function createDataset()
                     'Solidity', vector(2);
                     'Eccentricity', vector(3);
                     'Circularity', vector(4);
-                    'Extent', vector(5);
-                    'PerimAreaRatio', vector(6)
+                    'InvExtent', vector(5);
+                    'RadialVariance', vector(6);
+                    'Hu1', vector(7)
                 };
                 
                 uitable('Data', featData, ...
@@ -149,7 +150,7 @@ function createDataset()
                     if fid == -1
                         error('Impossibile creare il file CSV');
                     end
-                    fprintf(fid, 'Holes,Solidity,Eccentricity,Circularity,Extent,PerimAreaRatio,Label\n');
+                    fprintf(fid, 'Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Label\n');
                     fclose(fid);
                 end
                 
@@ -159,7 +160,7 @@ function createDataset()
                      error('Impossibile aprire il file CSV per appendere');
                 end
                 
-                fprintf(fid, '%f,%f,%f,%f,%f,%f,%d\n', vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), val);
+                fprintf(fid, '%f,%f,%f,%f,%f,%f,%f,%d\n', vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), val);
                 fclose(fid);
                 
                 fprintf('Salvato nel CSV di %s (Label: %d)\n', phase, val);
