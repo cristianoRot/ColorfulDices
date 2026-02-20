@@ -6,10 +6,14 @@ addpath('./DiceRecognition/script/');
 addpath('./DigitRecognition/script/');
 addpath('./DigitRecognition/');
 
-static_images = process_video("./videos/VIDEO-04.mp4");
+fprintf('Processing video...\n');
+
+static_images = process_video("./videos/VIDEO-01.mp4");
 
 num_images = numel(static_images);
 masks = cell(1, num_images);
+
+fprintf('Recognizing dices...\n');
 
 for i = 1:num_images
     image = static_images{i};
@@ -19,6 +23,8 @@ for i = 1:num_images
     
     dices_img = image .* uint8(cat(3, mask, mask, mask));
 end
+
+fprintf('Recognizing digits...\n');
 
 for i = 1:num_images
     image = static_images{i};

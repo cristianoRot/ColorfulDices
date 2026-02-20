@@ -79,16 +79,19 @@ function labels = getLabelsFiltered(labels)
         solidity = vec(2);
         eccentricity = vec(3);
         circularity = vec(4);
-        extent = vec(5);
-        perimAreaRatio = vec(6);
+        invExtent = vec(5);
+        radialVariance = vec(6);
+        hu1 = vec(7);
         
-        isSlopeWrong = solidity < 0.2 || solidity > 0.9;
-        isEccentricityWrong = eccentricity < 0.5; 
-        isCircularityWrong = circularity < 0.1 || circularity > 0.8;
-        isExtentWrong = extent < 0.15 || extent > 0.7; 
-        isPerimAreaRatioWrong = perimAreaRatio < 0.3 || perimAreaRatio > 1.4;
+        % Range validazione ricavati dai dataset correnti (min - margin, max + margin)
+        isSolidityWrong = solidity < 0.35 || solidity > 0.90;
+        isEccentricityWrong = eccentricity < 0.50 || eccentricity > 0.99; 
+        isCircularityWrong = circularity < 0.10 || circularity > 0.80;
+        isInvExtentWrong = invExtent < 0.20 || invExtent > 0.75; 
+        isRadialVarianceWrong = radialVariance < 0.25 || radialVariance > 0.60;
+        isHu1Wrong = hu1 < 0.15 || hu1 > 0.65;
 
-        if isSlopeWrong || isEccentricityWrong || isCircularityWrong || isExtentWrong || isPerimAreaRatioWrong
+        if isSolidityWrong || isEccentricityWrong || isCircularityWrong || isInvExtentWrong || isRadialVarianceWrong || isHu1Wrong
             labels(labels == i) = 0;
         end
     end
