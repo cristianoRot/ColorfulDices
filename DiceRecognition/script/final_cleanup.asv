@@ -1,0 +1,21 @@
+function mask = final_cleanup(mask)
+    
+    [labels, n] = bwlabel(mask);
+    areas = zeros(1, n);
+    for i = 1:n
+        areas(i) = sum(labels(:) == i);
+        fprintf('  Blob %d: area = %.1f\n', i, areas(i));
+    end
+
+    medianArea = median(areas);
+    fprintf('Median area: %.1f\n', medianArea);
+    
+    for i = 1:n
+        if areas(i) > medianArea * 1.2
+            regionMask = labels == i;
+            eroded = imerode(regionMask, strel("disk", 3));
+            mask(regionMask) = 0;
+            mask(eroded) = 1;
+        end
+    end
+end

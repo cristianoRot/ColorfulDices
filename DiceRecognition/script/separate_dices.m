@@ -10,8 +10,7 @@ function mask_separated = separate_dices(mask_to_separate, mean_area)
         region(cc.PixelIdxList{i}) = true;
         
         n_dices = max(2, min(round(length(cc.PixelIdxList{i}) / mean_area), 8));
-        
-        % Calcola bwdist una volta sola, passa a entrambe le funzioni
+
         D = bwdist(~region);
         seeds = find_seeds(D, region, n_dices, min_distance);
         

@@ -7,8 +7,8 @@ function dices_mask = segment_dices_initial(img)
     t1 = graythresh(S); 
     S_bin = imbinarize(S, t1);  
 
-    S = imgaussfilt(S, 1.3);
-    V = imgaussfilt(V, 1.3);
+    S = imgaussfilt(S, 1.5);
+    V = imgaussfilt(V, 1.5);
 
     edges_S = edge(S, 'prewitt');
     edges_V = edge(V, 'prewitt');

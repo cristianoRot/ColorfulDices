@@ -1,0 +1,189 @@
+close all;
+clear all;
+
+%% 1. CARICAMENTO IMMAGINE
+img_path = "./dices/images/dices_9_7.png";
+img = imread(img_path);
+figure, imshow(img), title("1. Immagine Originale");
+
+%% 2. RIMOZIONE VASSOIO (remove_bg_tray)
+hsv = rgb2hsv(img);
+S = hsv(:,:,2);
+
+S_inv = 1 - S;
+tray_rough = S_inv > 0.8;
+tray_mask = imclose(tray_rough, strel('square', 51));
+
+tray_masked_img = img .* uint8(cat(3, tray_mask, tray_mask, tray_mask));
+figure, imshow(tray_masked_img), title("2. Immagine senza sfondo (Vassoio)");
+
+%% 3. SEGMENTAZIONE INIZIALE (segment_dices_initial)
+hsv_tray = rgb2hsv(tray_masked_img);
+S_tray = hsv_tray(:,:,2);
+V_tray = hsv_tray(:,:,3);
+
+t1 = graythresh(S_tray); 
+S_bin = imbinarize(S_tray, t1);  
+
+S_smooth = imgaussfilt(S_tray, 1.3);
+V_smooth = imgaussfilt(V_tray, 1.3);
+
+edges_S = edge(S_smooth, 'prewitt');
+edges_V = edge(V_smooth, 'prewitt');
+edges_combined = edges_S | edges_V;
+
+dices_mask_initial = S_bin | edges_combined;
+
+figure, 
+subplot(1,3,1), imshow(S_bin), title("S Binarizzato");
+subplot(1,3,2), imshow(edges_combined), title("Edges (S+V)");
+subplot(1,3,3), imshow(dices_mask_initial), title("3. Maschera Iniziale (Unita)");
+
+%% 4. PULIZIA MORFOLOGICA (initial_cleanup)
+closedMask = imclose(dices_mask_initial, strel("disk", 9));
+
+figure, imshow(closedMask), title("Closing");
+
+openedMask = imopen(closedMask, strel("disk", 12));
+
+figure, imshow(openedMask), title("Opening");
+
+morphed_mask = imerode(openedMask, strel("disk", 3));
+
+figure, imshow(morphed_mask), title("4. Dopo Pulizia Morfologica (chiusura->apertura->erosione)");
+
+%% 5. ETICHETTATURA E CALCOLO AREE (label_dices)
+area_attesa_dado = 3500; % <--- AGGIORNA QUESTO VALORE CON QUELLO REALE
+    
+    label = logical(morphed_mask);
+    stats = regionprops(label, 'Area', 'PixelIdxList');
+    areas = [stats.Area];
+    
+    % 2. FILTRA IL RUMORE (Opzionale ma utile)
+    % Ignoriamo eventuali artefatti minuscoli che abbasserebbero la media
+    aree_valide = areas(areas > area_attesa_dado * 0.2);
+    
+    if isempty(aree_valide)
+        mean_area = area_attesa_dado;
+    else
+        % 3. CALCOLO DELLA MEDIA
+        q75 = prctile(aree_valide, 75);
+        areas_normal = aree_valide(aree_valide <= q75);
+        
+        if isempty(areas_normal)
+            mean_area = area_attesa_dado;
+        else
+            mean_area = mean(areas_normal);
+            
+            % 4. IL CONTROLLO DI SICUREZZA
+            % Se la media calcolata è esageratamente più grande del dado singolo
+            % significa che l'immagine ha solo dadi attaccati!
+            if mean_area > (area_attesa_dado * 1.5)
+                fprintf('ATTENZIONE: Nessun dado singolo trovato. Uso l''area di sicurezza.\n');
+                mean_area = area_attesa_dado;
+            end
+        end
+    end
+
+    % 5. SOGLIA DI SEPARAZIONE
+    % Tutto quello che supera 1.5 volte l'area di un dado singolo, va separato
+    area_threshold = 1.5 * mean_area;
+
+    mask_to_separate = false(size(morphed_mask));
+    mask_ok = false(size(morphed_mask));
+
+    for i = 1:length(stats)
+        % NOTA: Per sicurezza togliamo anche eventuali residui minuscoli di rumore
+        if stats(i).Area > area_threshold
+            mask_to_separate(stats(i).PixelIdxList) = true;
+        elseif stats(i).Area > (area_attesa_dado * 0.2)
+            mask_ok(stats(i).PixelIdxList) = true;
+        end
+    end
+
+figure, 
+subplot(1,2,1), imshow(mask_ok), title(sprintf("Dadi OK (Area media: %.1f)", mean_area));
+subplot(1,2,2), imshow(mask_to_separate), title("Da Separare");
+
+%% 6. SEPARAZIONE WATERSHED/VORONOI (separate_dices, find_seeds, watershed_split)
+cc = bwconncomp(mask_to_separate);
+mask_separated = false(size(mask_to_separate));
+
+avg_radius = sqrt(mean_area / pi);
+min_distance = avg_radius * 0.9;
+
+for i = 1:cc.NumObjects
+    region = false(size(mask_to_separate));
+    region(cc.PixelIdxList{i}) = true;
+    
+    n_dices = max(2, min(round(length(cc.PixelIdxList{i}) / mean_area), 8));
+    
+    % --- Logica find_seeds ---
+    D = bwdist(~region);
+    D_smooth = imgaussfilt(D, 2);
+    local_max = imregionalmax(D_smooth) & region;
+    [rows, cols] = find(local_max);
+    vals = arrayfun(@(r,c) D_smooth(r,c), rows, cols);
+    [~, idx] = sort(vals, 'descend');
+    candidates = [cols(idx), rows(idx)];
+    
+    if isempty(candidates)
+        mask_separated = mask_separated | region;
+        continue;
+    end
+    
+    seeds = candidates(1,:);
+    for j = 2:size(candidates, 1)
+        distances = vecnorm(seeds - candidates(j,:), 2, 2);
+        if all(distances > min_distance)
+            seeds = [seeds; candidates(j,:)];
+        end
+        if size(seeds, 1) >= n_dices
+            break;
+        end
+    end
+    
+    % --- Logica watershed_split (Voronoi) ---
+    [r_reg, c_reg] = find(region);
+    pixel_coords = [c_reg, r_reg];
+    dist_to_seeds = zeros(length(r_reg), size(seeds,1));
+    for s = 1:size(seeds, 1)
+        dist_to_seeds(:, s) = vecnorm(pixel_coords - seeds(s,:), 2, 2);
+    end
+    
+    [~, assignment] = min(dist_to_seeds, [], 2);
+    linear_idx = sub2ind(size(region), r_reg, c_reg);
+    label_map = zeros(size(region));
+    label_map(linear_idx) = assignment;
+    
+    boundaries = false(size(region));
+    for s = 1:size(seeds, 1)
+        seg = label_map == s;
+        eroded = imerode(seg, strel('disk', 1));
+        boundaries = boundaries | (seg & ~eroded);
+    end
+    
+    separated_region = region & ~boundaries;
+    mask_separated = mask_separated | separated_region;
+    
+    % Visualizza la separazione di questo blocco
+    figure, 
+    imshow(region); hold on;
+    plot(seeds(:,1), seeds(:,2), 'r*', 'MarkerSize', 10);
+    title(sprintf("Semi trovati per blocco %d", i));
+end
+
+%% 7. RISULTATO FINALE
+dices_mask_final = mask_ok | mask_separated;
+
+% Pulisco eventuali artefatti creati dai bordi del Voronoi
+dices_mask_final = imopen(dices_mask_final, strel('disk', 3));
+
+final_labels = bwlabel(dices_mask_final);
+dices_img = img .* uint8(cat(3, dices_mask_final, dices_mask_final, dices_mask_final));
+
+figure, 
+imshow(label2rgb(final_labels, 'jet', 'k', 'shuffle')), title("Labeling Finale");
+
+figure,
+imshow(dices_img), title("Immagine Mascherata Finale");
