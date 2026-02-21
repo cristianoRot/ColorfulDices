@@ -8,7 +8,7 @@ addpath('./DigitRecognition/');
 
 fprintf('Processing video...\n');
 
-static_images = process_video("./videos/VIDEO-03.mp4");
+static_images = process_video("./videos/VIDEO-02.mp4");
 
 num_images = numel(static_images);
 masks = cell(1, num_images);
@@ -21,8 +21,6 @@ for i = 1:num_images
     mask = masks{i};
         
     dices_img = image .* uint8(cat(3, mask, mask, mask));
-
-    figure; imshow(dices_img);
 end
 
 fprintf('Recognizing digits...\n');

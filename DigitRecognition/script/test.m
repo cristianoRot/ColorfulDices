@@ -2,8 +2,17 @@
 
 function out = test()
     close all;
-    image = imread('../data/img0.png');
-    mask = imread('../data/mask0.png');    
+    
+    scriptDir = fileparts(mfilename('fullpath'));
+    imgPath = fullfile(scriptDir, '..', 'data', 'img0.png');
+    maskPath = fullfile(scriptDir, '..', 'data', 'mask0.png');    
+    
+    if ~isfile(imgPath) || ~isfile(maskPath)
+        error('Image or mask not found in /data/ directory.');
+    end
+    
+    image = imread(imgPath);
+    mask = imread(maskPath);
     
     [dices, ~] = extractDices(image, mask);
     numDices = length(dices);
@@ -13,8 +22,6 @@ function out = test()
         vector = extractFeatures(out);
         number = predict(vector);
 
-        % Debug.
-        
         figure;
         subplot(2, 4, 1);
         imshow(dices{i});
@@ -39,8 +46,9 @@ function out = test()
             'Solidity', vector(2); 
             'Eccentricity', vector(3);
             'Circularity', vector(4);
-            'Extent', vector(5); 
-            'PerimAreaRatio', vector(6);
+            'InvExtent', vector(5); 
+            'RadialVariance', vector(6);
+            'Hu1', vector(7);
             'Predicted', number
         };
         columnNames = {'Feature', 'Value'};
