@@ -5,7 +5,6 @@ function LanciArray = process_video(filename)
     LanciArray = {}; % Inizializzo l'array vuoto per le immagini
     
     [~, nome_video, ~] = fileparts(filename);
-    fprintf('--- ANALISI con soglia adattiva: %s ---\n', filename);
 
     % --- 2. PARAMETRI ---
     box_area = [100, 0, 1080, 800]; 
@@ -33,38 +32,28 @@ function LanciArray = process_video(filename)
     timer_pausa = 0; 
     stopVideo = false;
     
-    try
-        hFig = figure('Name', ['Analisi: ', nome_video], 'KeyPressFcn', @kPress);
-    catch
-        hFig = figure('Name', 'Analisi Video', 'KeyPressFcn', @kPress);
-    end
-    
+    % No figure or visualization requested; remove GUI creation and keypress handling.
     fNum = 0;
 
     % --- 4. CICLO ---
     while hasFrame(vidObj) && not(stopVideo)
         frameRaw = readFrame(vidObj);
         fNum = fNum + 1;
-        process_frame_logic(hFig, fNum, frameRaw);
+        process_frame_logic(fNum, frameRaw);
     end
     
-    fprintf('--- FINE. %d lanci salvati nell''array. ---\n\n', lanci_totali);
 
-    function kPress(~, e) 
-        if strcmp(e.Key, 'escape'), stopVideo = true; end 
+    function kPress(~, ~) 
+        % Empty placeholder to keep compatibility if ever referenced.
     end 
 
     % --- 5. LOGICA ---
-    function process_frame_logic(fig, n, frame)
+    function process_frame_logic(n, frame)
         
-        colore_stato = 'yellow';
-        msg = 'ANALISI';
         deviazione_dadi = 0.0; 
         
         if timer_pausa > 0
             timer_pausa = timer_pausa - 1;
-            colore_stato = 'red';
-            msg = sprintf('PAUSA (%d)', timer_pausa);
             tmp = imcrop(frame, box_area);
             prev_gray = rgb2gray(tmp);
         else
@@ -89,19 +78,12 @@ function LanciArray = process_video(filename)
             
             if movimento < soglia_movimento
                 counter_fermo = counter_fermo + 1;
-                colore_stato = 'green';
-                msg = 'FERMO';
             else
                 counter_fermo = 0;
-                colore_stato = 'blue';
-                msg = 'MOVIMENTO';
             end
             
             % --- DECISIONE ---
             if counter_fermo >= frames_attesa
-                
-                % [DEBUG] Stampo i valori prima di decidere
-                fprintf('[CHECK] F:%04d | Dev: %6.2f | ', n, deviazione_dadi);
 
                 is_dadi = (deviazione_dadi > soglia_deviazione);
                 
@@ -127,33 +109,14 @@ function LanciArray = process_video(filename)
                         % --- SALVATAGGIO NELL'ARRAY ---
                         LanciArray{end+1} = img_crop; 
                         
-                        fprintf('>>> PRESO LANCIO %d | DiffDup: %.2f (Soglia: %.1f) | DeltaDev: %.2f\n', ...
-                            lanci_totali, diff_last, soglia_dup_dinamica, delta_dev);
-                        
                         last_saved_img = curr_gray;
                         last_dev_val = deviazione_dadi;
                         timer_pausa = frames_cooldown;
                         counter_fermo = 0;
-                        
-                        colore_stato = 'magenta';
-                        msg = 'PRESO!';
-                    else
-                        fprintf('SCARTATO: Duplicato (Diff: %.2f < %.1f)\n', diff_last, soglia_dup_dinamica);
-                        msg = 'DUPLICATO';
-                        colore_stato = 'cyan'; 
                     end
-                else
-                    fprintf('SCARTATO: Vuoto (Dev < %.1f)\n', soglia_deviazione);
-                    msg = 'VUOTO'; 
                 end
             end
         end
-        
-        if isvalid(fig) && mod(n, 2) == 0
-            img_vis = insertShape(frame, 'Rectangle', box_area, 'Color', colore_stato, 'LineWidth', 3);
-            txt = sprintf('L:%d | Dev:%.1f | %s', lanci_totali, deviazione_dadi, msg);
-            img_vis = insertText(img_vis, [10 10], txt, 'FontSize', 18, 'BoxColor', 'black', 'TextColor', 'white');
-            figure(fig); imshow(img_vis); drawnow limitrate;
-        end
+        % No visualization or figure updates performed.
     end
 end
