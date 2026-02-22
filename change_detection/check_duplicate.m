@@ -15,4 +15,4 @@ function [is_new_throw, diff_val] = check_duplicate(img_new, img_old, threshold)
     else
         is_new_throw = false; % Uguale -> Duplicato
     end
-end
+end 
