@@ -2,31 +2,20 @@ close all;
 clear all;
 
 %% 1. CARICAMENTO IMMAGINE
-img_path = "./dices/images/dices_4_3.png";
+img_path = "../datasets/dataset_test/images/image_0002.png"; 
 img = imread(img_path);
 figure, imshow(img), title("1. Immagine Originale");
 
-%% 2. RIMOZIONE VASSOIO (remove_bg_tray)
+%% 2. SEGMENTAZIONE INIZIALE (segment_dices_initial)
 hsv = rgb2hsv(img);
 S = hsv(:,:,2);
+V = hsv(:,:,3);
 
-S_inv = 1 - S;
-tray_rough = S_inv > 0.8;
-tray_mask = imclose(tray_rough, strel('square', 51));
+t1 = graythresh(S); 
+S_bin = imbinarize(S, t1);  
 
-tray_masked_img = img .* uint8(cat(3, tray_mask, tray_mask, tray_mask));
-figure, imshow(tray_masked_img), title("2. Immagine senza sfondo (Vassoio)");
-
-%% 3. SEGMENTAZIONE INIZIALE (segment_dices_initial)
-hsv_tray = rgb2hsv(tray_masked_img);
-S_tray = hsv_tray(:,:,2);
-V_tray = hsv_tray(:,:,3);
-
-t1 = graythresh(S_tray); 
-S_bin = imbinarize(S_tray, t1);  
-
-S_smooth = imgaussfilt(S_tray, 1.3);
-V_smooth = imgaussfilt(V_tray, 1.3);
+S_smooth = imgaussfilt(S, 1.5);
+V_smooth = imgaussfilt(V, 1.5);
 
 edges_S = edge(S_smooth, 'prewitt');
 edges_V = edge(V_smooth, 'prewitt');
@@ -37,75 +26,63 @@ dices_mask_initial = S_bin | edges_combined;
 figure, 
 subplot(1,3,1), imshow(S_bin), title("S Binarizzato");
 subplot(1,3,2), imshow(edges_combined), title("Edges (S+V)");
-subplot(1,3,3), imshow(dices_mask_initial), title("3. Maschera Iniziale (Unita)");
+subplot(1,3,3), imshow(dices_mask_initial), title("2. Maschera Iniziale (Unita)");
 
-%% 4. PULIZIA MORFOLOGICA (initial_cleanup)
-closedMask = imclose(dices_mask_initial, strel("disk", 11));
+%% 3. PULIZIA MORFOLOGICA E RIMOZIONE BORDI
+margin = 2;
+[h, w] = size(dices_mask_initial);
+[labels_borders, n_borders] = bwlabel(dices_mask_initial);
+cleanedMask = dices_mask_initial;
 
-figure, imshow(closedMask), title("Closing");
-
-openedMask = imopen(closedMask, strel("disk", 15));
-
-figure, imshow(openedMask), title("Opening");
-
-morphed_mask = imerode(openedMask, strel("disk", 3));
-
-figure, imshow(morphed_mask), title("4. Dopo Pulizia Morfologica (chiusura->apertura->erosione)");
-
-%% 5. ETICHETTATURA E CALCOLO AREE (label_dices)
-area_attesa_dado = 3500; % <--- AGGIORNA QUESTO VALORE CON QUELLO REALE
-    
-    label = logical(morphed_mask);
-    stats = regionprops(label, 'Area', 'PixelIdxList');
-    areas = [stats.Area];
-    
-    % 2. FILTRA IL RUMORE (Opzionale ma utile)
-    % Ignoriamo eventuali artefatti minuscoli che abbasserebbero la media
-    aree_valide = areas(areas > area_attesa_dado * 0.2);
-    
-    if isempty(aree_valide)
-        mean_area = area_attesa_dado;
-    else
-        % 3. CALCOLO DELLA MEDIA
-        q75 = prctile(aree_valide, 75);
-        areas_normal = aree_valide(aree_valide <= q75);
-        
-        if isempty(areas_normal)
-            mean_area = area_attesa_dado;
-        else
-            mean_area = mean(areas_normal);
-            
-            % 4. IL CONTROLLO DI SICUREZZA
-            % Se la media calcolata è esageratamente più grande del dado singolo
-            % significa che l'immagine ha solo dadi attaccati!
-            if mean_area > (area_attesa_dado * 1.5)
-                fprintf('ATTENZIONE: Nessun dado singolo trovato. Uso l''area di sicurezza.\n');
-                mean_area = area_attesa_dado;
-            end
-        end
+for i = 1:n_borders
+    [rows, cols] = find(labels_borders == i);
+    if min(rows) <= margin || max(rows) >= h - margin || min(cols) <= margin || max(cols) >= w - margin
+        cleanedMask(labels_borders == i) = 0;
     end
+end
 
-    % 5. SOGLIA DI SEPARAZIONE
-    % Tutto quello che supera 1.5 volte l'area di un dado singolo, va separato
-    area_threshold = 1.5 * mean_area;
-
-    mask_to_separate = false(size(morphed_mask));
-    mask_ok = false(size(morphed_mask));
-
-    for i = 1:length(stats)
-        % NOTA: Per sicurezza togliamo anche eventuali residui minuscoli di rumore
-        if stats(i).Area > area_threshold
-            mask_to_separate(stats(i).PixelIdxList) = true;
-        elseif stats(i).Area > (area_attesa_dado * 0.2)
-            mask_ok(stats(i).PixelIdxList) = true;
-        end
-    end
+closedMask = imclose(cleanedMask, strel("disk", 11));
+openedMask = imopen(closedMask, strel("disk", 11));
+morphed_mask = imerode(openedMask, strel("disk", 5));
 
 figure, 
-subplot(1,2,1), imshow(mask_ok), title(sprintf("Dadi OK (Area media: %.1f)", mean_area));
+subplot(1,3,1), imshow(closedMask), title("Closing (11)");
+subplot(1,3,2), imshow(openedMask), title("Opening (11)");
+subplot(1,3,3), imshow(morphed_mask), title("3. Dopo Pulizia (Erode 5)");
+
+%% 4. ETICHETTATURA E CALCOLO AREE
+max_expected_dice_area = 2000;
+    
+label = logical(morphed_mask);
+stats = regionprops(label, 'Area', 'PixelIdxList');
+areas = [stats.Area];
+    
+q75 = prctile(areas, 75);
+areas_normal = areas(areas <= q75);
+mean_area = mean(areas_normal);
+
+if isnan(mean_area) || mean_area > max_expected_dice_area
+    mean_area = max_expected_dice_area;
+end
+
+area_threshold = 1.5 * mean_area;
+
+mask_to_separate = false(size(morphed_mask));
+mask_ok = false(size(morphed_mask));
+
+for i = 1:length(stats)
+    if stats(i).Area > area_threshold
+        mask_to_separate(stats(i).PixelIdxList) = true;
+    else
+        mask_ok(stats(i).PixelIdxList) = true;
+    end
+end
+
+figure, 
+subplot(1,2,1), imshow(mask_ok), title(sprintf("Dadi OK (Area media usata: %.1f)", mean_area));
 subplot(1,2,2), imshow(mask_to_separate), title("Da Separare");
 
-%% 6. SEPARAZIONE WATERSHED/VORONOI (separate_dices, find_seeds, watershed_split)
+%% 5. SEPARAZIONE WATERSHED/VORONOI
 cc = bwconncomp(mask_to_separate);
 mask_separated = false(size(mask_to_separate));
 
@@ -118,7 +95,6 @@ for i = 1:cc.NumObjects
     
     n_dices = max(2, min(round(length(cc.PixelIdxList{i}) / mean_area), 8));
     
-    % --- Logica find_seeds ---
     D = bwdist(~region);
     D_smooth = imgaussfilt(D, 2);
     local_max = imregionalmax(D_smooth) & region;
@@ -143,7 +119,6 @@ for i = 1:cc.NumObjects
         end
     end
     
-    % --- Logica watershed_split (Voronoi) ---
     [r_reg, c_reg] = find(region);
     pixel_coords = [c_reg, r_reg];
     dist_to_seeds = zeros(length(r_reg), size(seeds,1));
@@ -165,25 +140,145 @@ for i = 1:cc.NumObjects
     
     separated_region = region & ~boundaries;
     mask_separated = mask_separated | separated_region;
-    
-    % Visualizza la separazione di questo blocco
-    figure, 
-    imshow(region); hold on;
-    plot(seeds(:,1), seeds(:,2), 'r*', 'MarkerSize', 10);
-    title(sprintf("Semi trovati per blocco %d", i));
 end
 
-%% 7. RISULTATO FINALE
-dices_mask_final = mask_ok | mask_separated;
+%% 6. FINAL CLEANUP
+dices_mask_combined = mask_ok | mask_separated;
+dices_mask_final = dices_mask_combined;
 
-% Pulisco eventuali artefatti creati dai bordi del Voronoi
-dices_mask_final = imopen(dices_mask_final, strel('disk', 3));
+[labels_final, n_final] = bwlabel(dices_mask_final);
+areas_final = zeros(1, n_final);
+for i = 1:n_final
+    areas_final(i) = sum(labels_final(:) == i);
+end
+
+medianArea = median(areas_final);
+if medianArea > 1500
+    medianArea = 1500;
+end
+
+for i = 1:n_final
+    if areas_final(i) > medianArea * 1.2
+        excess = areas_final(i) / medianArea;
+        dynamicErode = round(3 * excess);
+        regionMask = labels_final == i;
+        eroded = imerode(regionMask, strel("disk", dynamicErode));
+        dices_mask_final(regionMask) = 0;
+        dices_mask_final(eroded) = 1;
+    end
+end
 
 final_labels = bwlabel(dices_mask_final);
 dices_img = img .* uint8(cat(3, dices_mask_final, dices_mask_final, dices_mask_final));
 
 figure, 
-imshow(label2rgb(final_labels, 'jet', 'k', 'shuffle')), title("Labeling Finale");
+subplot(1,2,1), imshow(label2rgb(final_labels, 'jet', 'k', 'shuffle')), title("Labeling Finale");
+subplot(1,2,2), imshow(dices_img), title("Immagine Mascherata Finale");
 
-figure,
-imshow(dices_img), title("Immagine Mascherata Finale");
+%% 7. STIMA CENTRO E DISCO FINALE
+num_dadi = max(final_labels(:));
+
+fixed_size = 64; 
+half_size = floor(fixed_size / 2);
+circle_radius = 22;
+
+for i = 1:num_dadi
+    mask_dado = (final_labels == i);
+    [r, c] = find(mask_dado);
+    if isempty(r), continue; end
+    
+    min_r = min(r); max_r = max(r);
+    min_c = min(c); max_c = max(c);
+    
+    crop_rgb = img(min_r:max_r, min_c:max_c, :);
+    crop_mask = mask_dado(min_r:max_r, min_c:max_c);
+    
+    img_temp = crop_rgb;
+    img_temp(repmat(~crop_mask, [1, 1, 3])) = 0;
+    
+    hsv_crop = rgb2hsv(img_temp);
+    S_smooth = imgaussfilt(hsv_crop(:,:,2), 1.5);
+    V_smooth = imgaussfilt(hsv_crop(:,:,3), 1.5);
+    
+    edge_OR = edge(S_smooth, 'canny') | edge(V_smooth, 'canny');
+    
+    mask_interna = imerode(crop_mask, strel('disk', 6));
+    edge_OR(~mask_interna) = 0;
+    
+    edge_closed = imclose(edge_OR, strel('disk', 3));
+    edge_filled = imfill(edge_closed, 'holes');
+    
+    stats = regionprops(edge_filled, 'Area', 'Eccentricity', 'Centroid');
+    
+    % Centro di riferimento dalla maschera erosa
+    mask_erosa = imerode(crop_mask, strel('disk', 8));
+    if any(mask_erosa(:))
+        [r_m, c_m] = find(mask_erosa);
+    else
+        [r_m, c_m] = find(crop_mask);
+    end
+    ref_x = mean(c_m);
+    ref_y = mean(r_m);
+
+    if isempty(stats)
+        center_x_local = ref_x;
+        center_y_local = ref_y;
+    else
+        scores = zeros(1, length(stats));
+        for b = 1:length(stats)
+            eccentricity_penalty = 1 - stats(b).Eccentricity; 
+            scores(b) = stats(b).Area * (eccentricity_penalty ^ 2); 
+        end
+        [~, idx_best] = max(scores);
+        center_x_local = stats(idx_best).Centroid(1);
+        center_y_local = stats(idx_best).Centroid(2);
+
+        % Controlla distanza dal centro di riferimento
+        dist = sqrt((center_x_local - ref_x)^2 + (center_y_local - ref_y)^2);
+        [h_crop, w_crop] = size(crop_mask);
+        max_dist = min(h_crop, w_crop) * 0.3;
+
+        if dist > max_dist
+            center_x_local = ref_x;
+            center_y_local = ref_y;
+        end
+    end
+    
+    center_x_abs = round(min_c + center_x_local - 1);
+    center_y_abs = round(min_r + center_y_local - 1);
+    
+    x_start = max(1, center_x_abs - half_size);
+    y_start = max(1, center_y_abs - half_size);
+    x_end = min(size(img, 2), center_x_abs + half_size - 1);
+    y_end = min(size(img, 1), center_y_abs + half_size - 1);
+    
+    fixed_square_crop = img(y_start:y_end, x_start:x_end, :);
+    
+    if size(fixed_square_crop,1) ~= fixed_size || size(fixed_square_crop,2) ~= fixed_size
+        fixed_square_crop = imresize(fixed_square_crop, [fixed_size, fixed_size]);
+    end
+    
+    [X, Y] = meshgrid(1:fixed_size, 1:fixed_size);
+    center_c = fixed_size / 2 + 0.5;
+    center_r = fixed_size / 2 + 0.5;
+    circle_mask = (X - center_c).^2 + (Y - center_r).^2 <= circle_radius^2;
+    
+    final_masked_crop = fixed_square_crop;
+    final_masked_crop(repmat(~circle_mask, [1, 1, 3])) = 0;
+    
+    figure('Name', sprintf('Dado %d', i), 'NumberTitle', 'off', 'Position', [300, 300, 900, 300]);
+    
+    subplot(1, 4, 1); imshow(crop_rgb); 
+    hold on; plot(center_x_local, center_y_local, 'r+', 'MarkerSize', 10, 'LineWidth', 2); hold off;
+    title('Originale + Centro Stimato');
+    
+    subplot(1, 4, 2); imshow(edge_filled); 
+    hold on; plot(center_x_local, center_y_local, 'r+', 'MarkerSize', 10, 'LineWidth', 2); hold off;
+    title('Blob Selezionato');
+    
+    subplot(1, 4, 3); imshow(fixed_square_crop); 
+    title(sprintf('Quadrato Fisso (%dx%d)', fixed_size, fixed_size));
+    
+    subplot(1, 4, 4); imshow(final_masked_crop); 
+    title(sprintf('Disco Finale (R=%d)', circle_radius));
+end

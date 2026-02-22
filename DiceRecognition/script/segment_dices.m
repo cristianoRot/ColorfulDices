@@ -13,7 +13,11 @@ function dices_mask = segment_dices(img)
     
     mask_separated = separate_dices(mask_to_separate, mean_area);
     
-    dices_mask = mask_ok | mask_separated;
+    dices_mask_full = mask_ok | mask_separated;
 
-    dices_mask = final_cleanup(dices_mask);
+
+    %SE non aiuta centro stimato -> dices_mask = dices_mask_full
+    dices_mask_full = final_cleanup(dices_mask_full);
+    
+    dices_mask = create_circular_masks(img, dices_mask_full);
 end
