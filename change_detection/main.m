@@ -1,20 +1,22 @@
 clear; clc; close all;
 
-filename = 'VIDEO-04.mp4'; 
+nome_video = 'VIDEO-04.mp4'; 
+cartella_video = '../videos';
 
-% Controlla se il file esiste prima di lanciare la funzione
-if exist(filename, 'file')
-    % Analisi Video
-    ImmaginiLanci = process_video(filename);
+filepath = fullfile(cartella_video, nome_video);
+
+if exist(filepath, 'file')
+    
+    disp(['Analizzo il file: ', filepath]);
+    
+    ImmaginiLanci = process_video(filepath);
     num_lanci = length(ImmaginiLanci);
     
     disp(['Ho trovato ', num2str(num_lanci), ' lanci.']);
     
-    % Visualizzazione Dinamica in base a quanti lanci sono stati trovati
     if num_lanci > 0
-        figure('Name', 'Risultati Rilevamento', 'NumberTitle', 'off');
+        figure('Name', ['Risultati: ', nome_video], 'NumberTitle', 'off');
         
-        % Calcolo automatico righe/colonne 
         cols = ceil(sqrt(num_lanci)); 
         rows = ceil(num_lanci / cols);
         
@@ -28,5 +30,5 @@ if exist(filename, 'file')
     end
     
 else
-    error('File video non trovato nella cartella corrente.');
+    error('File video non trovato! Verifica che la cartella "videos" esista e contenga il file.');
 end
