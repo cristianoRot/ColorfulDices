@@ -69,7 +69,7 @@ function labels = getLabelsFiltered(labels)
         adjustedMask = adjustNumberImage(regionMask, 10);
         
         currentArea = sum(adjustedMask(:));
-        if currentArea < (totArea * 0.02) || currentArea > (totArea * 0.09)
+        if currentArea < (totArea * 0.02) || currentArea > (totArea * 0.12)
             labels(labels == i) = 0;
             continue;
         end
