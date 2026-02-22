@@ -101,7 +101,7 @@ function LanciArray = process_video(filename)
             if counter_fermo >= frames_attesa
                 
                 % [DEBUG] Stampo i valori prima di decidere
-                fprintf('[CHECK] F:%04d | Dev: %6.2f | ', n, deviazione_dadi);
+                % fprintf('[CHECK] F:%04d | Dev: %6.2f | ', n, deviazione_dadi);
 
                 is_dadi = (deviazione_dadi > soglia_deviazione);
                 
@@ -138,12 +138,12 @@ function LanciArray = process_video(filename)
                         colore_stato = 'magenta';
                         msg = 'PRESO!';
                     else
-                        fprintf('SCARTATO: Duplicato (Diff: %.2f < %.1f)\n', diff_last, soglia_dup_dinamica);
+                        % fprintf('SCARTATO: Duplicato (Diff: %.2f < %.1f)\n', diff_last, soglia_dup_dinamica);
                         msg = 'DUPLICATO';
                         colore_stato = 'cyan'; 
                     end
                 else
-                    fprintf('SCARTATO: Vuoto (Dev < %.1f)\n', soglia_deviazione);
+                    % fprintf('SCARTATO: Vuoto (Dev < %.1f)\n', soglia_deviazione);
                     msg = 'VUOTO'; 
                 end
             end
