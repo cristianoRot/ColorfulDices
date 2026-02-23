@@ -1,53 +1,102 @@
-% extractPixelsNumber.m - Cristiano Rotunno 914317
+% segmentDigit.m - Cristiano Rotunno 914317
 
-function [KMlabels, labels, out] = extractPixelsNumber(image)    
+% k = number of clusters used in kmeans
+
+function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigit(image)    
+    minK = 3;
+    maxK = 6;
+
+    bestScore = -inf;
+    
+    for k = minK:maxK
+        [pred_, score_, out_, labels_, kmeansLabels_, num_cluster_, vectorFeatures_] = segmentDigitByKMeans(image, k);
+
+        if score_ > bestScore
+            bestScore = score_;
+            
+            kmeansLabels = kmeansLabels_;
+            labels = labels_;
+            out = out_;
+            prediction = pred_;
+            score = score_;
+            num_cluster = num_cluster_;
+            vectorFeatures = vectorFeatures_;
+        end
+    end
+end
+
+function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigitByKMeans(image, k)    
     [high, width, ~] = size(image);
     image = im2double(image);
     
     data = getFeaturesVector(image);
-
-    k = 6;
     
     if size(data, 1) < k
-        KMlabels = zeros(high, width);
+        kmeansLabels = zeros(high, width);
         labels = zeros(high, width);
         out = false(high, width);
+        prediction = 0; 
+        score = -inf; 
+        num_cluster = k;
+        vectorFeatures = zeros(1, 7);
         return;
     end
 
-    KMlabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
-    KMlabels = reshape(KMlabels, high, width);
+    kmeansLabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
+    kmeansLabels = reshape(kmeansLabels, high, width);
 
-    labels = separateClusters(KMlabels);
+    labels = separateClusters(kmeansLabels);
     labels = getLabelsFiltered(labels);
 
-    numLabelIndex = -1;
-    minDist = inf;
+    bestLabel = -1;
+    bestPred = -1;
+    bestScore = -inf;
+    bestFeatures = [];
 
     for i = 1:max(labels(:))
         im = labels == i;
+        im = adjustNumberImage(im, 10);
 
         dist = getDistToCenter(im);
+        features = extractFeatures(im);
 
-        if minDist > dist
-            numLabelIndex = i;
-            minDist = dist;
+        [pred_, scores_, ~] = predict(features);
+        score_ = max(scores_);
+
+        finalScore = score_ * exp(-dist / 50);
+
+        if finalScore > bestScore
+            bestScore = finalScore;
+            bestLabel = i;
+            bestPred = pred_;
+            bestFeatures = features;
         end
-
     end
 
-    out = labels == numLabelIndex;
-    out = adjustNumberImage(out, 10);
+    if bestLabel == -1
+        out = false(high, width);
+        vectorFeatures = zeros(1, 7);
+        prediction = 0;
+        score = -inf;
+        num_cluster = k;
+        return;
+    end
+    
+    out = adjustNumberImage(labels == bestLabel, 10);
+    vectorFeatures = bestFeatures;
+    prediction = bestPred;
+    score = bestScore;
+    num_cluster = k;
 end
 
-function out = separateClusters(KMlabels)
-    [h, w] = size(KMlabels);
+function out = separateClusters(kmeansLabels)
+    [h, w] = size(kmeansLabels);
     out = zeros(h, w);
     nextID = 1;
-    k = max(KMlabels(:));
+    k = max(kmeansLabels(:));
     
     for c = 1:k
-        currentClusterMask = (KMlabels == c);
+        currentClusterMask = (kmeansLabels == c);
         
         [objLabels, numObjs] = bwlabel(currentClusterMask);
         

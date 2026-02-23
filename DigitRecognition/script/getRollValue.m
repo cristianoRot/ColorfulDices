@@ -11,9 +11,7 @@ function sum = getRollValue(image, mask)
     hold on;
     
     for i = 1:numDices
-        [~, ~, out] = extractPixelsNumber(dices{i});
-        vector = extractFeatures(out);
-        number = predict(vector);
+        [number, ~, ~, ~, ~, ~, ~] = segmentDigit(dices{i});
         
         sum = sum + number;
         

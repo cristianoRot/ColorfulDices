@@ -1,6 +1,6 @@
 % predict.m - Cristiano Rotunno 914317
 
-function num = predict(vector)
+function [pred, scores, loss] = predict(vector)
     scriptDir = fileparts(mfilename('fullpath'));
     modelPath = fullfile(scriptDir, '..', 'model.mat');
     
@@ -11,6 +11,6 @@ function num = predict(vector)
     data = load(modelPath);
     mdl = data.mdl;
     
-    num = predict(mdl, vector);
+    [pred, scores, loss] = predict(mdl, vector);
 end
 

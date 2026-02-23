@@ -18,9 +18,7 @@ function out = test()
     numDices = length(dices);
     
     for i = 1:numDices
-        [KMlabels, labels, out] = extractPixelsNumber(dices{i});
-        vector = extractFeatures(out);
-        number = predict(vector);
+        [number, score_val, out, labels, KMlabels, k_val, vector] = segmentDigit(dices{i});
 
         figure;
         subplot(2, 4, 1);
@@ -49,6 +47,8 @@ function out = test()
             'InvExtent', vector(5); 
             'RadialVariance', vector(6);
             'Hu1', vector(7);
+            'K-Means Clusters', k_val;
+            'Prediction Score', score_val;
             'Predicted', number
         };
         columnNames = {'Feature', 'Value'};

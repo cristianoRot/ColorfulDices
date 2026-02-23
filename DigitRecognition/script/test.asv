@@ -9,8 +9,7 @@ function out = test()
     numDices = length(dices);
     
     for i = 1:numDices
-        [KMlabels, labels, out] = extractPixelsNumber(dices{i});
-        vector = extractFeatures(out);
+        [~, ~, vector, out, labels, KMlabels] = segmentDigit(dices{i});
 
         number = predict(holes, pa);
 

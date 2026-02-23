@@ -83,7 +83,7 @@ function createDataset()
                 singleDice = dices{i};
                 
                 % Estrai features
-                [KMlabels, labels, out] = extractPixelsNumber(singleDice);
+                [number, score_val, out, labels, KMlabels, k_val, vector] = segmentDigit(singleDice);
                 
                 % Mostra il dado e l'immagine processata
                 figure(hFig);
@@ -105,8 +105,6 @@ function createDataset()
                 subplot(2, 4, 4);
                 imshow(out);
                 title('Final Selection');
-                
-                vector = extractFeatures(out);
 
                  % Table with features
                 featData = {
@@ -116,7 +114,10 @@ function createDataset()
                     'Circularity', vector(4);
                     'InvExtent', vector(5);
                     'RadialVariance', vector(6);
-                    'Hu1', vector(7)
+                    'Hu1', vector(7);
+                    'K-Means Clusters', k_val;
+                    'Prediction Score', score_val;
+                    'Predicted', number
                 };
                 
                 uitable('Data', featData, ...
