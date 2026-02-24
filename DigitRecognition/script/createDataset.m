@@ -1,175 +1,218 @@
-% createDataset.m
+% createDataset.m - Cristiano Rotunno 914317
 function createDataset()
-    % Chiudi eventuali file aperti precedentemente
     fclose('all');
 
-    % Risolvi i percorsi in modo dinamico in base alla posizione dello script
     scriptDir = fileparts(mfilename('fullpath'));
     baseDatasetsDir = fullfile(scriptDir, '..', '..', 'datasets');
     datasetDir = fullfile(scriptDir, '..', 'dataset');
+    
+    % Paths for saving images and masks
+    saveImagesDir = fullfile(datasetDir, 'images');
+    saveMasksDir  = fullfile(datasetDir, 'masks');
 
-    if ~exist(datasetDir, 'dir')
-        mkdir(datasetDir);
-    end
+    % Create directories if they don't exist
+    if ~exist(saveImagesDir, 'dir'), mkdir(saveImagesDir); end
+    if ~exist(saveMasksDir, 'dir'), mkdir(saveMasksDir); end
 
-    % I due set da processare
     phases = {'train', 'test'};
 
-    % Setup figure once
     hFig = figure(1);
-    set(hFig, 'Position', [100, 100, 1200, 600]);
+    set(hFig, 'Position', [100, 100, 1400, 600]);
+
+    % Counter for unique filenames across phases
+    globalCounter = 1;
 
     for p = 1:length(phases)
         phase = phases{p};
-        fprintf('\n--- Inizio elaborazione set di %s ---\n', phase);
+        fprintf('\n--- Processing %s set ---\n', phase);
         
         imagesDir = fullfile(baseDatasetsDir, ['dataset_' phase], 'images');
         masksDir  = fullfile(baseDatasetsDir, ['dataset_' phase], 'masks');
         csvPath   = fullfile(datasetDir, [phase '.csv']);
         
-        % Rimuovi il vecchio CSV locale per ripartire da zero se si riesegue lo script
         if isfile(csvPath)
             delete(csvPath);
         end
 
-        % Cerca le immagini (dovrebbero essere .png secondo lo script precedente, facciamo fallback .jpg)
         images = dir(fullfile(imagesDir, '*.png')); 
         if isempty(images)
              images = dir(fullfile(imagesDir, '*.jpg'));
         end
         
-        sampleCounter = 1;
-
         for k = 1:length(images)
             imgName = images(k).name;
             if imgName(1) == '.'
-                continue; % Salta file nascosti
+                continue; 
             end
             
             imgPath = fullfile(imagesDir, imgName);
-            
-            % I nomi in create_dataset.m sono formattati come "image_0001.png" e "mask_0001.png"
             maskName = strrep(imgName, 'image_', 'mask_');
             maskPath = fullfile(masksDir, maskName);
             
             if ~isfile(maskPath)
-                fprintf('Maschera mancante per %s, salto.\n', imgName);
+                fprintf('Missing mask for %s, skipping.\n', imgName);
                 continue;
             end
 
-            fprintf('Elaborazione %s (%s)...\n', imgName, phase);
+            fprintf('Processing %s (%s)...\n', imgName, phase);
             
             im = imread(imgPath);
             mask = imread(maskPath);
 
-            % Gestione maschere RGB o con canali extra
             if size(mask, 3) > 1
                 mask = mask(:,:,1);
             end
-            
-            % Ensure mask is logical
             mask = mask > 0;
             
-            % Verifica dimensioni
             if size(im, 1) ~= size(mask, 1) || size(im, 2) ~= size(mask, 2)
-                fprintf('Dimensioni non corrispondenti tra immagine e maschera per %s. Resize maschera.\n', imgName);
                 mask = imresize(mask, [size(im, 1), size(im, 2)], 'nearest');
             end
 
-            % Estrai i singoli dadi usando la funzione esistente
             [dices, ~] = extractDices(im, mask);
             
             for i = 1:length(dices)
                 singleDice = dices{i};
                 
-                % Estrai features
-                [number, score_val, out, labels, KMlabels, k_val, vector] = segmentDigit(singleDice);
+                % Standard processing to get candidate regions
+                k_val = 5; 
+                [high, width, ~] = size(singleDice);
+                data = getFeaturesVector(singleDice);
                 
-                % Mostra il dado e l'immagine processata
+                kmeansLabels = kmeans(data, k_val, 'Replicates', 3, 'MaxIter', 500);
+                kmeansLabels = reshape(kmeansLabels, high, width);
+                
+                labels = separateClusters(kmeansLabels);
+                totalArea = high * width;
+                labels = getLabelsFiltered(labels, totalArea);
+
+                % Graphics setup
                 figure(hFig);
                 clf; 
-                subplot(2, 4, 1);
+                
+                subplot(1, 4, 1);
                 imshow(singleDice);
-                title(sprintf('Image: %s - Dice %d', imgName, i), 'Interpreter', 'none');
+                title(sprintf('%s - Dice %d', imgName, i), 'Interpreter', 'none');
 
-                subplot(2, 4, 2);
-                imagesc(KMlabels);
+                subplot(1, 4, 2);
+                imagesc(kmeansLabels);
                 title('K-Means Labels');
                 axis image;
 
-                subplot(2, 4, 3);
+                subplot(1, 4, 3);
                 imagesc(labels);
-                title('Filtered Components');
+                title('CLICK on the digit region');
                 axis image;
                 
-                subplot(2, 4, 4);
-                imshow(out);
-                title('Final Selection');
+                % Manual selection
+                selectedLabel = 0;
+                while selectedLabel == 0
+                    try
+                        [x, y] = ginput(1);
+                    catch
+                        fprintf('Interaction interrupted.\n');
+                        return;
+                    end
+                    x = round(x); y = round(y);
+                    if x >= 1 && x <= width && y >= 1 && y <= high
+                        selectedLabel = labels(y, x);
+                    end
+                end
+                
+                selectedMask = (labels == selectedLabel);
+                selectedMask = adjustNumberImage(selectedMask, 10);
+                
+                subplot(1, 4, 4);
+                imshow(selectedMask);
+                title('Selected Mask');
 
-                 % Table with features
-                featData = {
-                    'Holes', vector(1);
-                    'Solidity', vector(2);
-                    'Eccentricity', vector(3);
-                    'Circularity', vector(4);
-                    'InvExtent', vector(5);
-                    'RadialVariance', vector(6);
-                    'Hu1', vector(7);
-                    'K-Means Clusters', k_val;
-                    'Prediction Score', score_val;
-                    'Predicted', number
-                };
+                vector = extractFeatures(selectedMask);
                 
-                uitable('Data', featData, ...
-                        'ColumnName', {'Feature', 'Value'}, ...
-                        'RowName', [], ...
-                        'Units', 'normalized', ...
-                        'Position', [0.3, 0.1, 0.4, 0.3]);
-                
-                % Chiedi input utente
+                % Ask for ground truth
                 validInput = false;
                 while ~validInput
-                    prompt = sprintf('[SET %s] Inserisci valore (1-6, 0 scarta): ', upper(phase));
+                    prompt = sprintf('[SET %s] Value (1-6, 0 skip): ', upper(phase));
                     val = input(prompt);
-                    
                     if ~isempty(val) && isnumeric(val) && val >= 0 && val <= 6
                         validInput = true;
                     else
-                        fprintf('Valore non valido.\n');
+                        fprintf('Invalid value.\n');
                     end
                 end
                 
                 if val == 0
-                    fprintf('Scartato.\n');
+                    fprintf('Skipped.\n');
                     continue;
                 end
                 
-                % Salva features
-                % Se il file non esiste, scrivi l'header
+                % Save Image and Mask
+                saveName = sprintf('sample_%04d.png', globalCounter);
+                imwrite(singleDice, fullfile(saveImagesDir, saveName));
+                imwrite(selectedMask, fullfile(saveMasksDir, saveName));
+                
+                % Save Features to CSV
                 if ~isfile(csvPath)
                     fid = fopen(csvPath, 'w');
-                    if fid == -1
-                        error('Impossibile creare il file CSV');
-                    end
                     fprintf(fid, 'Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Label\n');
                     fclose(fid);
                 end
-                
-                % Appendi il dato corrente
                 fid = fopen(csvPath, 'a');
-                if fid == -1
-                     error('Impossibile aprire il file CSV per appendere');
-                end
-                
                 fprintf(fid, '%f,%f,%f,%f,%f,%f,%f,%d\n', vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), val);
                 fclose(fid);
                 
-                fprintf('Salvato nel CSV di %s (Label: %d)\n', phase, val);
-                
-                sampleCounter = sampleCounter + 1;
+                fprintf('Saved Sample %04d (Label: %d)\n', globalCounter, val);
+                globalCounter = globalCounter + 1;
             end
         end
     end
-    close(1);
-    fprintf('Finito.\n');
+    close(hFig);
+    fprintf('Done. Dataset saved in DigitRecognition/dataset/\n');
+end
+
+function data = getFeaturesVector(image)
+    image = im2double(image);
+    lab = rgb2lab(image);
+    hsv = rgb2hsv(image);
+    data = [reshape(lab, [], 3), reshape(hsv(:,:,2), [], 1)];
+    min_val = min(data); max_val = max(data);
+    range_val = max_val - min_val;
+    range_val(range_val == 0) = 1;
+    data = (data - min_val) ./ range_val;
+end
+
+function out = separateClusters(kmeansLabels)
+    [h, w] = size(kmeansLabels);
+    out = zeros(h, w);
+    nextID = 1;
+    k = max(kmeansLabels(:));
+    for c = 1:k
+        [objLabels, numObjs] = bwlabel(kmeansLabels == c);
+        for n = 1:numObjs
+            out(objLabels == n) = nextID;
+            nextID = nextID + 1;
+        end
+    end
+end
+
+function labels = getLabelsFiltered(labels, totalArea)
+    numLabels = max(labels(:));
+    for i = 1:numLabels
+        area = sum(labels(:) == i);
+        if area / totalArea < 0.01 || area / totalArea > 0.20
+            labels(labels == i) = 0;
+        end
+    end
+end
+
+function bw = adjustNumberImage(bw, T)
+    invBw = ~bw;
+    [L, numRegions] = bwlabel(invBw, 4);
+    stats = regionprops(L, 'Area', 'PixelIdxList');
+    if isempty(stats), return; end
+    areas = [stats.Area];
+    [~, mainIdx] = max(areas);
+    for i = 1:numRegions
+        if i ~= mainIdx && stats(i).Area <= T
+            bw(stats(i).PixelIdxList) = 1;
+        end
+    end
 end

@@ -1,3 +1,5 @@
+% extractFeatures.m - Cristiano Rotunno 914317
+
 function vector = extractFeatures(bw)
     bw = logical(bw);
     
@@ -32,7 +34,7 @@ function vector = extractFeatures(bw)
         radialVariance = 0;
     end
 
-    % PRIMO MOMENTO DI HU
+    % First Hu Moment
     if ~isempty(x)
         mu20 = sum((x - s.Centroid(1)).^2);
         mu02 = sum((y - s.Centroid(2)).^2);

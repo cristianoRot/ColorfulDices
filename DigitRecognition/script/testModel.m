@@ -1,3 +1,5 @@
+% testModel.m - Cristiano Rotunno 914317
+
 function testModel()
     scriptDir = fileparts(mfilename('fullpath'));
     csvPath = fullfile(scriptDir, '..', 'dataset', 'test.csv');
@@ -33,7 +35,7 @@ function testModel()
     fprintf('Correct classifications: %d\n', numCorrect);
     fprintf('Global Accuracy: %.2f%%\n\n', accuracy);
     
-    fig = figure('Name', 'Test Evaluation', 'NumberTitle', 'off');
+    figure('Name', 'Test Evaluation', 'NumberTitle', 'off');
     cm = confusionchart(Y_test, Y_pred);
     
     cm.Title = sprintf('Confusion Matrix (Accuracy: %.2f%%)', accuracy);

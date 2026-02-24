@@ -1,7 +1,6 @@
 % segmentDigit.m - Cristiano Rotunno 914317
 
 % k = number of clusters used in kmeans
-
 function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigit(image)    
     minK = 3;
     maxK = 6;
@@ -45,8 +44,9 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
     kmeansLabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
     kmeansLabels = reshape(kmeansLabels, high, width);
 
+    totalArea = high * width;
     labels = separateClusters(kmeansLabels);
-    labels = getLabelsFiltered(labels);
+    labels = getLabelsFiltered(labels, totalArea);
 
     bestLabel = -1;
     bestPred = -1;
@@ -63,7 +63,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
         [pred_, scores_, ~] = predict(features);
         score_ = max(scores_);
 
-        finalScore = score_ * exp(-dist / 50);
+        finalScore = score_ * exp(-dist / 80);
 
         if finalScore > bestScore
             bestScore = finalScore;
@@ -107,10 +107,7 @@ function out = separateClusters(kmeansLabels)
     end
 end
 
-function labels = getLabelsFiltered(labels)
-    [h, w] = size(labels);
-    totArea = h * w;
-    
+function labels = getLabelsFiltered(labels, totalArea)
     numLabels = max(labels(:));
     
     for i = 1:numLabels
@@ -118,7 +115,9 @@ function labels = getLabelsFiltered(labels)
         adjustedMask = adjustNumberImage(regionMask, 10);
         
         currentArea = sum(adjustedMask(:));
-        if currentArea < (totArea * 0.02) || currentArea > (totArea * 0.12)
+        a = currentArea / totalArea;
+
+        if a < 0.03 || a > 0.12
             labels(labels == i) = 0;
             continue;
         end
@@ -132,7 +131,7 @@ function labels = getLabelsFiltered(labels)
         radialVariance = vec(6);
         hu1 = vec(7);
         
-        % Range validazione ricavati dai dataset correnti (min - margin, max + margin)
+        % Validation ranges from current datasets
         isSolidityWrong = solidity < 0.35 || solidity > 0.90;
         isEccentricityWrong = eccentricity < 0.50 || eccentricity > 0.99; 
         isCircularityWrong = circularity < 0.10 || circularity > 0.80;
