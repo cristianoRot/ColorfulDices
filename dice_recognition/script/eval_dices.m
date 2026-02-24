@@ -2,7 +2,7 @@
 clear all; close all; clc;
 
 % selezione del dataset
-test_train = "test";
+test_train = "train";
 
 % --- CONFIGURAZIONE CARTELLE ---
 img_folder = '../../datasets/dataset_'+test_train+'/images/';
@@ -36,7 +36,7 @@ for i = 1:num_files
     end
     
     % Conversione
-    gt = logical(rgb2gray(imread(gt_path)));
+    gt = logical(imread(gt_path));
     
     pred = logical(segment_dices(img)); 
     
