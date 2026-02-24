@@ -2,7 +2,7 @@ close all;
 clear all;
 
 %% 1. CARICAMENTO IMMAGINE
-img_path = "../datasets/dataset_test/images/image_0002.png"; 
+img_path = "../datasets/dataset_train/images/image_0031.png"; 
 img = imread(img_path);
 figure, imshow(img), title("1. Immagine Originale");
 
@@ -14,8 +14,11 @@ V = hsv(:,:,3);
 t1 = graythresh(S); 
 S_bin = imbinarize(S, t1);  
 
-S_smooth = imgaussfilt(S, 1.5);
-V_smooth = imgaussfilt(V, 1.5);
+S_med = medfilt2(S, [9 9]); 
+V_med = medfilt2(V, [9 9]);
+
+S_smooth = imgaussfilt(S_med, 1.5);
+V_smooth = imgaussfilt(V_med, 1.5);
 
 edges_S = edge(S_smooth, 'prewitt');
 edges_V = edge(V_smooth, 'prewitt');
@@ -42,8 +45,8 @@ for i = 1:n_borders
 end
 
 closedMask = imclose(cleanedMask, strel("disk", 11));
-openedMask = imopen(closedMask, strel("disk", 11));
-morphed_mask = imerode(openedMask, strel("disk", 5));
+openedMask = imopen(closedMask, strel("disk", 13));
+morphed_mask = imerode(openedMask, strel("disk", 3));
 
 figure, 
 subplot(1,3,1), imshow(closedMask), title("Closing (11)");
