@@ -8,7 +8,7 @@ addpath('./digit_recognition/');
 
 fprintf('Processing video...\n');
 
-static_images = process_video("./videos/VIDEO-10.mp4");
+static_images = process_video("./videos/VIDEO-01.mp4");
 
 num_images = numel(static_images);
 masks = cell(1, num_images);
