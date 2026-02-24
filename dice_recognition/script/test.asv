@@ -1,9 +1,0 @@
-close all;
-clear all;
-
-img = imread("../dices/images/dices_3_3.png");
-out = segment_dices(img);
-
-out = imerode(out, strel())
-
-imshow(out);

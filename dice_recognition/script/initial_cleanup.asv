@@ -1,6 +1,0 @@
-function morphed_mask = morph_cleanup(mask)
-
-    closedMask = imclose(mask, strel("disk", 11));
-    openedMask = imopen(closedMask, strel("disk", 13));
-    morphed_mask = imerode(openedMask, strel("disk", ));
-end
