@@ -5,7 +5,12 @@ function trainModel()
     csvPath = fullfile(scriptDir, '..', 'dataset', 'train.csv');
     data = readtable(csvPath);
     
-    X = data{:, 1:end-1};
+    % Check for 'id' column and exclude it
+    if any(strcmp(data.Properties.VariableNames, 'id'))
+        X = data{:, 2:end-1};
+    else
+        X = data{:, 1:end-1};
+    end
     Y = data{:, end};
     
     mdl = fitcknn(X, Y, ...

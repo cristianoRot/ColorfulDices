@@ -17,7 +17,12 @@ function testModel()
     
     data = readtable(csvPath);
     
-    X_test = data{:, 1:end-1};
+    % Check for 'id' column and exclude it
+    if any(strcmp(data.Properties.VariableNames, 'id'))
+        X_test = data{:, 2:end-1};
+    else
+        X_test = data{:, 1:end-1};
+    end
     Y_test = data{:, end};
     
     if isempty(Y_test)
