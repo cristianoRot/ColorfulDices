@@ -152,11 +152,11 @@ function createDataset()
                 % Save Features to CSV
                 if ~isfile(csvPath)
                     fid = fopen(csvPath, 'w');
-                    fprintf(fid, 'Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Label\n');
+                    fprintf(fid, 'id,Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Label\n');
                     fclose(fid);
                 end
                 fid = fopen(csvPath, 'a');
-                fprintf(fid, '%f,%f,%f,%f,%f,%f,%f,%d\n', vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), val);
+                fprintf(fid, '%d,%f,%f,%f,%f,%f,%f,%f,%d\n', globalCounter, vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), val);
                 fclose(fid);
                 
                 fprintf('Saved Sample %04d (Label: %d)\n', globalCounter, val);
