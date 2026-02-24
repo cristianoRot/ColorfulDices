@@ -4,17 +4,28 @@ function validateSegmentation()
     
     scriptDir = fileparts(mfilename('fullpath'));
     datasetDir = fullfile(scriptDir, '..', 'dataset');
-    imagesDir = fullfile(datasetDir, 'images');
-    masksDir  = fullfile(datasetDir, 'masks');
+    phases = {'train', 'test'};
+    imgFiles = [];
     
-    if ~exist(imagesDir, 'dir') || ~exist(masksDir, 'dir')
-        error('Dataset folders (images/masks) not found in DigitRecognition/dataset.');
+    for p = 1:length(phases)
+        pName = phases{p};
+        pImagesDir = fullfile(datasetDir, pName, 'images');
+        pMasksDir  = fullfile(datasetDir, pName, 'masks');
+        
+        if exist(pImagesDir, 'dir')
+            files = dir(fullfile(pImagesDir, 'sample_*.png'));
+            for f = 1:length(files)
+                files(f).phase = pName;
+                files(f).fullImgPath = fullfile(pImagesDir, files(f).name);
+                files(f).fullMaskPath = fullfile(pMasksDir, files(f).name);
+            end
+            imgFiles = [imgFiles; files];
+        end
     end
-    
-    imgFiles = dir(fullfile(imagesDir, 'sample_*.png'));
+
     numFiles = length(imgFiles);
     if numFiles == 0
-        fprintf('No samples found in %s\n', imagesDir);
+        fprintf('No samples found in DigitRecognition/dataset/{train,test}/images\n');
         return;
     end
     
@@ -24,12 +35,13 @@ function validateSegmentation()
     k = 1;
     while k >= 1 && k <= numFiles
         imgName = imgFiles(k).name;
+        phaseName = imgFiles(k).phase;
         charIdx = strrep(imgName, 'sample_', '');
         charIdx = strrep(charIdx, '.png', '');
         id = str2double(charIdx);
         
-        imgPath = fullfile(imagesDir, imgName);
-        maskPath = fullfile(masksDir, imgName);
+        imgPath = imgFiles(k).fullImgPath;
+        maskPath = imgFiles(k).fullMaskPath;
         
         if ~isfile(maskPath)
             k = k + 1;
@@ -44,7 +56,7 @@ function validateSegmentation()
         figure(hFig);
         clf;
         
-        subplot(2, 4, 1); imshow(diceImg); title(sprintf('Sample [%d/%d] ID: %d', k, numFiles, id));
+        subplot(2, 4, 1); imshow(diceImg); title(sprintf('[%s] Sample [%d/%d] ID: %d', phaseName, k, numFiles, id));
         subplot(2, 4, 2); imshow(gtMask); title('GT Mask (User Selected)');
         subplot(2, 4, 3); imagesc(KMlabels); title(sprintf('K-Means (k=%d)', k_val)); axis image;
         subplot(2, 4, 4); imagesc(labels); title('Filtered Components'); axis image;

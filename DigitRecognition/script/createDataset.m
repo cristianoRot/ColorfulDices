@@ -7,25 +7,25 @@ function createDataset()
     baseDatasetsDir = fullfile(scriptDir, '..', '..', 'datasets');
     datasetDir = fullfile(scriptDir, '..', 'dataset');
     
-    % Paths for saving images and masks
-    saveImagesDir = fullfile(datasetDir, 'images');
-    saveMasksDir  = fullfile(datasetDir, 'masks');
-
-    % Create directories if they don't exist
-    if ~exist(saveImagesDir, 'dir'), mkdir(saveImagesDir); end
-    if ~exist(saveMasksDir, 'dir'), mkdir(saveMasksDir); end
-
     phases = {'train', 'test'};
 
     hFig = figure(1);
     set(hFig, 'Position', [100, 100, 1400, 600]);
 
-    % Counter for unique filenames across phases
-    globalCounter = 1;
-
     for p = 1:length(phases)
         phase = phases{p};
         fprintf('\n--- Processing %s set ---\n', phase);
+        
+        % Paths for saving images and masks for the current phase
+        phaseDir = fullfile(datasetDir, phase);
+        saveImagesDir = fullfile(phaseDir, 'images');
+        saveMasksDir  = fullfile(phaseDir, 'masks');
+        
+        if ~exist(saveImagesDir, 'dir'), mkdir(saveImagesDir); end
+        if ~exist(saveMasksDir, 'dir'), mkdir(saveMasksDir); end
+
+        % Counter for unique filenames within the current phase
+        phaseCounter = 1;
         
         imagesDir = fullfile(baseDatasetsDir, ['dataset_' phase], 'images');
         masksDir  = fullfile(baseDatasetsDir, ['dataset_' phase], 'masks');
@@ -146,22 +146,22 @@ function createDataset()
                 end
                 
                 % Save Image and Mask
-                saveName = sprintf('sample_%04d.png', globalCounter);
+                saveName = sprintf('sample_%04d.png', phaseCounter);
                 imwrite(singleDice, fullfile(saveImagesDir, saveName));
                 imwrite(selectedMask, fullfile(saveMasksDir, saveName));
                 
                 % Save Features to CSV
                 if ~isfile(csvPath)
                     fid = fopen(csvPath, 'w');
-                    fprintf(fid, 'id,Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Label\n');
+                    fprintf(fid, 'id,Holes,Solidity,Eccentricity,Circularity,InvExtent,RadialVariance,Hu1,Hu2,Hu3,Label\n');
                     fclose(fid);
                 end
                 fid = fopen(csvPath, 'a');
-                fprintf(fid, '%d,%f,%f,%f,%f,%f,%f,%f,%d\n', globalCounter, vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), val);
+                fprintf(fid, '%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n', phaseCounter, vector(1), vector(2), vector(3), vector(4), vector(5), vector(6), vector(7), vector(8), vector(9), val);
                 fclose(fid);
                 
-                fprintf('Saved Sample %04d (Label: %d)\n', globalCounter, val);
-                globalCounter = globalCounter + 1;
+                fprintf('Saved Sample %04d (Label: %d)\n', phaseCounter, val);
+                phaseCounter = phaseCounter + 1;
             end
         end
     end

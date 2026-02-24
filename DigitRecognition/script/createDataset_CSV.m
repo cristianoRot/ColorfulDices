@@ -3,7 +3,6 @@
 function createDataset_CSV()
     scriptDir = fileparts(mfilename('fullpath'));
     datasetDir = fullfile(scriptDir, '..', 'dataset');
-    masksDir   = fullfile(datasetDir, 'masks');
     
     filesToUpdate = {'train.csv', 'test.csv'};
     
@@ -15,8 +14,12 @@ function createDataset_CSV()
             fprintf('%s not found, skipping.\n', csvName);
             continue;
         end
+
+        % Determine phase name from csv file name
+        phaseName = strrep(csvName, '.csv', '');
+        currentMasksDir = fullfile(datasetDir, phaseName, 'masks');
         
-        fprintf('Updating %s...\n', csvName);
+        fprintf('Updating %s using masks in %s/...\n', csvName, phaseName);
         T = readtable(csvPath);
         
         if ~any(strcmp(T.Properties.VariableNames, 'id')) || ~any(strcmp(T.Properties.VariableNames, 'Label'))
@@ -35,7 +38,7 @@ function createDataset_CSV()
         for i = 1:numRows
             currentId = ids(i);
             maskName = sprintf('sample_%04d.png', currentId);
-            maskPath = fullfile(masksDir, maskName);
+            maskPath = fullfile(currentMasksDir, maskName);
             
             if isfile(maskPath)
                 mask = imread(maskPath);
@@ -45,7 +48,7 @@ function createDataset_CSV()
                 mask = mask > 0;
                 allFeatures(i, :) = extractFeatures(mask);
             else
-                fprintf('Warning: Mask %s not found for id %d.\n', maskName, currentId);
+                fprintf('Warning: Mask %s not found in phase folder %s for id %d.\n', maskName, phaseName, currentId);
             end
         end
         
