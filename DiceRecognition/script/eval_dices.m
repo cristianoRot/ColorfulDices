@@ -1,9 +1,12 @@
 %% Script di Valutazione Dataset Maschere
 clear all; close all; clc;
 
+% selezione del dataset
+test_train = "test";
+
 % --- CONFIGURAZIONE CARTELLE ---
-img_folder = '../../datasets/dataset_test/images/';
-mask_folder = '../../datasets/dataset_test/masks/';
+img_folder = '../../datasets/dataset_'+test_train+'/images/';
+mask_folder = '../../datasets/dataset_'+test_train+'//masks/';
 file_ext = '*.png';
 
 % Recupera la lista dei file
@@ -56,18 +59,18 @@ end
 accuracy  = (total_TP + total_TN) / (total_TP + total_TN + total_FP + total_FN);
 precision = total_TP / (total_TP + total_FP);
 recall    = total_TP / (total_TP + total_FN);
-dice      = 2 * total_TP / (2 * total_TP + total_FP + total_FN);
+f1      = 2 * total_TP / (2 * total_TP + total_FP + total_FN);
 
 if isnan(precision), precision = 0; end
 if isnan(recall), recall = 0; end
 
 % --- OUTPUT RISULTATI ---
 fprintf('\n========================================\n');
-fprintf('   RISULTATI VALUTAZIONE DATASET\n');
+fprintf('   RISULTATI VALUTAZIONE DATASET '+test_train+'\n');
 fprintf('========================================\n');
 fprintf('Totale immagini:  %d\n', num_files);
 fprintf('Accuracy:         %.4f\n', accuracy);
 fprintf('Precision:        %.4f\n', precision);
 fprintf('Recall:           %.4f\n', recall);
-fprintf('Dice Score (F1):  %.4f\n', dice);
+fprintf('F1 Score:         %.4f\n', f1);
 fprintf('----------------------------------------\n');
