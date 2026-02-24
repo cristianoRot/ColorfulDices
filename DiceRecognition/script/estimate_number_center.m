@@ -1,5 +1,5 @@
 function [center_x, center_y] = estimate_number_center(crop_rgb, crop_mask)
-    % Centro di riferimento dalla maschera erosa
+
     mask_erosa = imerode(crop_mask, strel('disk', 8));
     if any(mask_erosa(:))
         [r_m, c_m] = find(mask_erosa);
@@ -9,7 +9,6 @@ function [center_x, center_y] = estimate_number_center(crop_rgb, crop_mask)
     ref_x = mean(c_m);
     ref_y = mean(r_m);
 
-    % Azzera lo sfondo fuori dal dado
     img_temp = crop_rgb;
     img_temp(repmat(~crop_mask, [1, 1, 3])) = 0;
     
@@ -40,7 +39,6 @@ function [center_x, center_y] = estimate_number_center(crop_rgb, crop_mask)
         center_x = stats(idx_best).Centroid(1);
         center_y = stats(idx_best).Centroid(2);
         
-        % Controlla distanza dal centro di riferimento
         dist = sqrt((center_x - ref_x)^2 + (center_y - ref_y)^2);
         [h_crop, w_crop] = size(crop_mask);
         max_dist = min(h_crop, w_crop) * 0.3;

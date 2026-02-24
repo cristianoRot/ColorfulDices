@@ -1,6 +1,8 @@
 close all;
 clear all;
 
+%% --- SCRIPT INIZIALE PER TESTARE SINGOLE COMPONENTI CON DEBUG -- 
+
 %% 1. CARICAMENTO IMMAGINE
 img_path = "../datasets/dataset_train/images/image_0003.png"; 
 img = imread(img_path);
@@ -217,7 +219,6 @@ for i = 1:num_dadi
     
     stats = regionprops(edge_filled, 'Area', 'Eccentricity', 'Centroid');
     
-    % Centro di riferimento dalla maschera erosa
     mask_erosa = imerode(crop_mask, strel('disk', 8));
     if any(mask_erosa(:))
         [r_m, c_m] = find(mask_erosa);
@@ -240,7 +241,6 @@ for i = 1:num_dadi
         center_x_local = stats(idx_best).Centroid(1);
         center_y_local = stats(idx_best).Centroid(2);
 
-        % Controlla distanza dal centro di riferimento
         dist = sqrt((center_x_local - ref_x)^2 + (center_y_local - ref_y)^2);
         [h_crop, w_crop] = size(crop_mask);
         max_dist = min(h_crop, w_crop) * 0.3;

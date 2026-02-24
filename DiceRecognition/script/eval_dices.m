@@ -2,8 +2,8 @@
 clear all; close all; clc;
 
 % --- CONFIGURAZIONE CARTELLE ---
-img_folder = '../dices/images/';
-mask_folder = '../dices/masks/';
+img_folder = '../../datasets/dataset_test/images/';
+mask_folder = '../../datasets/dataset_test/masks/';
 file_ext = '*.png';
 
 % Recupera la lista dei file
@@ -25,7 +25,8 @@ for i = 1:num_files
     img_name = files(i).name;
     img = imread(fullfile(img_folder, img_name));
     
-    gt_path = fullfile(mask_folder, img_name);
+    mask_name = strrep(img_name, 'image_', 'mask_');
+    gt_path = fullfile(mask_folder, mask_name);
     if ~exist(gt_path, 'file')
         fprintf('[-] Salto %s: Maschera non trovata.\n', img_name);
         continue;
@@ -36,7 +37,7 @@ for i = 1:num_files
     
     pred = logical(segment_dices(img)); 
     
-    % 3. Calcolo metriche
+    % Calcolo metriche
     tp_curr = sum(gt & pred, 'all');
     fp_curr = sum(~gt & pred, 'all');
     fn_curr = sum(gt & ~pred, 'all');
