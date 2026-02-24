@@ -1,6 +1,5 @@
 function LanciArray = process_video_debug(filename)    
-    close all; 
-    
+
     % --- 1. SETUP ---
     LanciArray = {}; % Inizializzo l'array vuoto per le immagini
     
