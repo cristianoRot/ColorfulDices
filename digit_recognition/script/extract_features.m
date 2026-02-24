@@ -1,6 +1,6 @@
-% extractFeatures.m - Cristiano Rotunno 914317
+% extract_features.m - Cristiano Rotunno 914317
 
-function vector = extractFeatures(bw)
+function vector = extract_features(bw)
     bw = logical(bw);
     
     stats = regionprops(bw, 'EulerNumber', 'Solidity', 'Eccentricity', ...

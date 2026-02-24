@@ -2,8 +2,8 @@ close all;
 clear all;
 
 addpath('./change_detection/');
-addpath('./DiceRecognition/script/');
-addpath('./DigitRecognition/script/');
+addpath('./dice_recognition/script/');
+addpath('./digit_recognition/script/');
 
 static_images = process_video("./videos/VIDEO-01.mp4");
 

@@ -1,6 +1,6 @@
-% extractDices.m - Cristiano Rotunno 914317
+% extract_dices.m - Cristiano Rotunno 914317
 
-function [dices_images, bboxes] = extractDices(image, mask)
+function [dices_images, bboxes] = extract_dices(image, mask)
     mask = logical(mask);
     [labels, num_region] = bwlabel(mask);
     arr = getBoundingBox(image, labels, num_region);

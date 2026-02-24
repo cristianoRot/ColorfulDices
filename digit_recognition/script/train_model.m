@@ -1,6 +1,6 @@
-% trainModel.m - Cristiano Rotunno 914317
+% train_model.m - Cristiano Rotunno 914317
 
-function trainModel()
+function train_model()
     scriptDir = fileparts(mfilename('fullpath'));
     csvPath = fullfile(scriptDir, '..', 'dataset', 'train.csv');
     data = readtable(csvPath);

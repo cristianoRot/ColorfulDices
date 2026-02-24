@@ -2,9 +2,9 @@ close all;
 clear all;
 
 addpath('./change_detection/');
-addpath('./DiceRecognition/script/');
-addpath('./DigitRecognition/script/');
-addpath('./DigitRecognition/');
+addpath('./dice_recognition/script/');
+addpath('./digit_recognition/script/');
+addpath('./digit_recognition/');
 
 fprintf('Processing video...\n');
 
@@ -32,5 +32,5 @@ for i = 1:num_images
     image = static_images{i};
     mask = masks{i};
     
-    getRollValue(image, mask);
+    get_roll_value(image, mask);
 end

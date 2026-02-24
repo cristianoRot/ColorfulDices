@@ -1,7 +1,7 @@
-% getRollValue.m - Cristiano Rotunno 914317
+% get_roll_value.m - Cristiano Rotunno 914317
 
-function val = getRollValue(image, mask)
-    [dices, bboxes] = extractDices(image, mask);
+function val = get_roll_value(image, mask)
+    [dices, bboxes] = extract_dices(image, mask);
     numDices = length(dices);
 
     val = 0;
@@ -11,7 +11,7 @@ function val = getRollValue(image, mask)
     hold on;
     
     for i = 1:numDices
-        [number, ~, ~, ~, ~, ~, ~] = segmentDigit(dices{i});
+        [number, ~, ~, ~, ~, ~, ~] = segment_digit(dices{i});
         
         val = val + number;
         

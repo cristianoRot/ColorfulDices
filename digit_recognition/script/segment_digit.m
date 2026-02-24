@@ -1,7 +1,7 @@
-% segmentDigit.m - Cristiano Rotunno 914317
+% segment_digit.m - Cristiano Rotunno 914317
 
 % k = number of clusters used in kmeans
-function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigit(image)    
+function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segment_digit(image)    
     [high, width, ~] = size(image);
     totalArea = high * width;
     
@@ -13,7 +13,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
     bestScore = -inf;
     
     for k = minK:maxK
-        [pred_, score_, out_, labels_, kmeansLabels_, num_cluster_, vectorFeatures_] = segmentDigitByKMeans(data, k, high, width, totalArea);
+        [pred_, score_, out_, labels_, kmeansLabels_, num_cluster_, vectorFeatures_] = segment_digitByKMeans(data, k, high, width, totalArea);
 
         if score_ > bestScore
             bestScore = score_;
@@ -29,7 +29,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
     end
 end
 
-function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigitByKMeans(data, k, high, width, totalArea)    
+function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segment_digitByKMeans(data, k, high, width, totalArea)    
     if size(data, 1) < k
         kmeansLabels = zeros(high, width);
         labels = zeros(high, width);
@@ -57,7 +57,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
         im = adjustNumberImage(im, 10);
 
         dist = getDistToCenter(im);
-        features = extractFeatures(im);
+        features = extract_features(im);
 
         [pred_, scores_, ~] = predict(features);
         score_ = max(scores_);
@@ -126,7 +126,7 @@ function labels = getLabelsFiltered(labels, totalArea)
             continue;
         end
 
-        vec = extractFeatures(adjustedMask);
+        vec = extract_features(adjustedMask);
         
         solidity = vec(2);
         eccentricity = vec(3);

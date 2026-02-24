@@ -1,6 +1,6 @@
-% createDataset.m - Cristiano Rotunno 914317
+% create_dataset_digit.m - Cristiano Rotunno 914317
 
-function createDataset()
+function create_dataset_digit()
     fclose('all');
 
     scriptDir = fileparts(mfilename('fullpath'));
@@ -69,7 +69,7 @@ function createDataset()
                 mask = imresize(mask, [size(im, 1), size(im, 2)], 'nearest');
             end
 
-            [dices, ~] = extractDices(im, mask);
+            [dices, ~] = extract_dices(im, mask);
             
             for i = 1:length(dices)
                 singleDice = dices{i};
@@ -126,7 +126,7 @@ function createDataset()
                 imshow(selectedMask);
                 title('Selected Mask');
 
-                vector = extractFeatures(selectedMask);
+                vector = extract_features(selectedMask);
                 
                 % Ask for ground truth
                 validInput = false;
@@ -166,7 +166,7 @@ function createDataset()
         end
     end
     close(hFig);
-    fprintf('Done. Dataset saved in DigitRecognition/dataset/\n');
+    fprintf('Done. Dataset saved in digit_recognition/dataset/\n');
 end
 
 function data = getFeaturesVector(image)

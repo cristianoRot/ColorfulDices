@@ -1,6 +1,6 @@
-% createDataset_CSV.m - Cristiano Rotunno 914317
+% create_dataset_csv.m - Cristiano Rotunno 914317
 
-function createDataset_CSV()
+function create_dataset_csv()
     scriptDir = fileparts(mfilename('fullpath'));
     datasetDir = fullfile(scriptDir, '..', 'dataset');
     
@@ -31,7 +31,7 @@ function createDataset_CSV()
         labels = T.Label;
         numRows = height(T);
         
-        testVec = extractFeatures(ones(10,10));
+        testVec = extract_features(ones(10,10));
         numFeatures = length(testVec);
         allFeatures = zeros(numRows, numFeatures);
         
@@ -46,7 +46,7 @@ function createDataset_CSV()
                     mask = mask(:,:,1);
                 end
                 mask = mask > 0;
-                allFeatures(i, :) = extractFeatures(mask);
+                allFeatures(i, :) = extract_features(mask);
             else
                 fprintf('Warning: Mask %s not found in phase folder %s for id %d.\n', maskName, phaseName, currentId);
             end

@@ -2,9 +2,9 @@ close all;
 clear all;
 
 addpath('./change_detection/');
-addpath('./DiceRecognition/script/');
-addpath('./DigitRecognition/script/');
-addpath('./DigitRecognition/');
+addpath('./dice_recognition/script/');
+addpath('./digit_recognition/script/');
+addpath('./digit_recognition/');
 
 base_dir = './datasets';
 train_img_dir = fullfile(base_dir, 'dataset_train', 'images');

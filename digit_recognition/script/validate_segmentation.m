@@ -1,5 +1,5 @@
-% validateSegmentation.m - Cristiano Rotunno 914317
-function validateSegmentation()
+% validate_segmentation.m - Cristiano Rotunno 914317
+function validate_segmentation()
     close all;
     
     scriptDir = fileparts(mfilename('fullpath'));
@@ -25,7 +25,7 @@ function validateSegmentation()
 
     numFiles = length(imgFiles);
     if numFiles == 0
-        fprintf('No samples found in DigitRecognition/dataset/{train,test}/images\n');
+        fprintf('No samples found in digit_recognition/dataset/{train,test}/images\n');
         return;
     end
     
@@ -51,7 +51,7 @@ function validateSegmentation()
         diceImg = imread(imgPath);
         gtMask = imread(maskPath);
         
-        [pred, score, out, labels, KMlabels, k_val, vector] = segmentDigit(diceImg);
+        [pred, score, out, labels, KMlabels, k_val, vector] = segment_digit(diceImg);
         
         figure(hFig);
         clf;

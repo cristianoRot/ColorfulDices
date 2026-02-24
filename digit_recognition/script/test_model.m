@@ -1,6 +1,6 @@
-% testModel.m - Cristiano Rotunno 914317
+% test_model.m - Cristiano Rotunno 914317
 
-function testModel()
+function test_model()
     scriptDir = fileparts(mfilename('fullpath'));
     csvPath = fullfile(scriptDir, '..', 'dataset', 'test.csv');
     modelPath = fullfile(scriptDir, '..', 'model.mat');
