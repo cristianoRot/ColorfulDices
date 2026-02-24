@@ -2,13 +2,18 @@
 
 % k = number of clusters used in kmeans
 function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigit(image)    
+    [high, width, ~] = size(image);
+    totalArea = high * width;
+    
+    imgDouble = im2double(image);
+    data = getFeaturesVector(imgDouble);
+
     minK = 3;
     maxK = 6;
-
     bestScore = -inf;
     
     for k = minK:maxK
-        [pred_, score_, out_, labels_, kmeansLabels_, num_cluster_, vectorFeatures_] = segmentDigitByKMeans(image, k);
+        [pred_, score_, out_, labels_, kmeansLabels_, num_cluster_, vectorFeatures_] = segmentDigitByKMeans(data, k, high, width, totalArea);
 
         if score_ > bestScore
             bestScore = score_;
@@ -24,12 +29,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
     end
 end
 
-function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigitByKMeans(image, k)    
-    [high, width, ~] = size(image);
-    image = im2double(image);
-    
-    data = getFeaturesVector(image);
-    
+function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatures] = segmentDigitByKMeans(data, k, high, width, totalArea)    
     if size(data, 1) < k
         kmeansLabels = zeros(high, width);
         labels = zeros(high, width);
@@ -37,14 +37,13 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
         prediction = 0; 
         score = -inf; 
         num_cluster = k;
-        vectorFeatures = zeros(1, 7);
+        vectorFeatures = zeros(1, 9);
         return;
     end
 
     kmeansLabels = kmeans(data, k, 'Replicates', 3, 'MaxIter', 500);
     kmeansLabels = reshape(kmeansLabels, high, width);
 
-    totalArea = high * width;
     labels = separateClusters(kmeansLabels);
     labels = getLabelsFiltered(labels, totalArea);
 
@@ -75,7 +74,7 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
 
     if bestLabel == -1
         out = false(high, width);
-        vectorFeatures = zeros(1, 7);
+        vectorFeatures = zeros(1, 9);
         prediction = 0;
         score = -inf;
         num_cluster = k;
