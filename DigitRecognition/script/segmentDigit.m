@@ -64,6 +64,11 @@ function [prediction, score, out, labels, kmeansLabels, num_cluster, vectorFeatu
 
         finalScore = score_ * exp(-dist / 80);
 
+        % Apply malus for prediction '1' to reduce noise/reflection impact
+        if pred_ == 1
+            finalScore = finalScore * 0.87;
+        end
+
         if finalScore > bestScore
             bestScore = finalScore;
             bestLabel = i;
@@ -129,16 +134,19 @@ function labels = getLabelsFiltered(labels, totalArea)
         invExtent = vec(5);
         radialVariance = vec(6);
         hu1 = vec(7);
+        hu2 = vec(8);
+        hu3 = vec(9);
         
-        % Validation ranges from current datasets
-        isSolidityWrong = solidity < 0.35 || solidity > 0.90;
-        isEccentricityWrong = eccentricity < 0.50 || eccentricity > 0.99; 
-        isCircularityWrong = circularity < 0.10 || circularity > 0.80;
-        isInvExtentWrong = invExtent < 0.20 || invExtent > 0.75; 
-        isRadialVarianceWrong = radialVariance < 0.25 || radialVariance > 0.60;
+        isSolidityWrong = solidity < 0.35 || solidity > 0.95;
+        isEccentricityWrong = eccentricity < 0.40 || eccentricity > 1.00; 
+        isCircularityWrong = circularity < 0.10 || circularity > 0.85;
+        isInvExtentWrong = invExtent < 0.20 || invExtent > 0.85; 
+        isRadialVarianceWrong = radialVariance < 0.20 || radialVariance > 0.65;
         isHu1Wrong = hu1 < 0.15 || hu1 > 0.65;
+        isHu2Wrong = hu2 < 0.00 || hu2 > 0.35;
+        isHu3Wrong = hu3 < 0.00 || hu3 > 0.05;
 
-        if isSolidityWrong || isEccentricityWrong || isCircularityWrong || isInvExtentWrong || isRadialVarianceWrong || isHu1Wrong
+        if isSolidityWrong || isEccentricityWrong || isCircularityWrong || isInvExtentWrong || isRadialVarianceWrong || isHu1Wrong || isHu2Wrong || isHu3Wrong
             labels(labels == i) = 0;
         end
     end
