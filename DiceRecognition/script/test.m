@@ -1,7 +1,7 @@
 close all;
 clear all;
 
-img = imread("../../datasets/dataset_test/images/image_0002.png");
+img = imread("../../datasets/dataset_train/images/image_0003.png");
 out = segment_dices(img);
 
 figure, 

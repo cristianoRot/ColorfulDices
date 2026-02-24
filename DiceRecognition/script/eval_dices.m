@@ -1,47 +1,72 @@
-clear all; close all;
+%% Script di Valutazione Dataset Maschere
+clear all; close all; clc;
 
+% --- CONFIGURAZIONE CARTELLE ---
+img_folder = '../dices/images/';
+mask_folder = '../dices/masks/';
+file_ext = '*.png';
 
-img = imread("../dices/images/dices_2_2.png");
+% Recupera la lista dei file
+files = dir(fullfile(img_folder, file_ext));
+num_files = length(files);
 
-% Load masks
-ground_truth = logical(rgb2gray(imread("../dices/masks/dices_2_2.png")));
-predicted = segment_dices(img);
+if num_files == 0
+    error('Nessun file trovato in: %s', img_folder);
+end
 
-% Convert to vectors and calculate confusion matrix
-gt_vec = ground_truth(:);
-pred_vec = predicted(:);
+% Inizializzazione
+total_TP = 0; total_FP = 0; total_FN = 0; total_TN = 0;
 
-% MATLAB's built-in confusion matrix
-C = confusionmat(gt_vec, pred_vec);
+fprintf('Inizio elaborazione di %d immagini...\n', num_files);
+fprintf('----------------------------------------\n');
 
-% Display confusion matrix
-figure;
-confusionchart(C, {'Background', 'Dice'});
-title('Confusion Matrix');
+for i = 1:num_files
+    % Caricamento Immagine e GT
+    img_name = files(i).name;
+    img = imread(fullfile(img_folder, img_name));
+    
+    gt_path = fullfile(mask_folder, img_name);
+    if ~exist(gt_path, 'file')
+        fprintf('[-] Salto %s: Maschera non trovata.\n', img_name);
+        continue;
+    end
+    
+    % Conversione
+    gt = logical(rgb2gray(imread(gt_path)));
+    
+    pred = logical(segment_dices(img)); 
+    
+    % 3. Calcolo metriche
+    tp_curr = sum(gt & pred, 'all');
+    fp_curr = sum(~gt & pred, 'all');
+    fn_curr = sum(gt & ~pred, 'all');
+    tn_curr = sum(~gt & ~pred, 'all');
+    
+    % Accumulo per la media globale
+    total_TP = total_TP + tp_curr;
+    total_FP = total_FP + fp_curr;
+    total_FN = total_FN + fn_curr;
+    total_TN = total_TN + tn_curr;
+    
+    fprintf('[+] Processata: %s\n', img_name);
+end
 
-% Calculate basic metrics from confusion matrix
-TN = C(1,1);  % True Negatives
-FP = C(1,2);  % False Positives
-FN = C(2,1);  % False Negatives
-TP = C(2,2);  % True Positives
+% --- CALCOLO METRICHE FINALI ---
+accuracy  = (total_TP + total_TN) / (total_TP + total_TN + total_FP + total_FN);
+precision = total_TP / (total_TP + total_FP);
+recall    = total_TP / (total_TP + total_FN);
+dice      = 2 * total_TP / (2 * total_TP + total_FP + total_FN);
 
-% Simple metrics
-accuracy = (TP + TN) / (TP + TN + FP + FN);
-precision = TP / (TP + FP);
-recall = TP / (TP + FN);
-dice = 2*TP / (2*TP + FP + FN);
+if isnan(precision), precision = 0; end
+if isnan(recall), recall = 0; end
 
-% Print results
-fprintf('\nSimple Evaluation Results:\n');
-fprintf('==========================\n');
-fprintf('Accuracy:  %.3f\n', accuracy);
-fprintf('Precision: %.3f\n', precision);
-fprintf('Recall:    %.3f\n', recall);
-fprintf('Dice:      %.3f\n', dice);
-fprintf('\n');
-
-% Quick visual comparison
-figure;
-subplot(1,3,1); imshow(ground_truth); title('Ground Truth');
-subplot(1,3,2); imshow(predicted); title('Predicted');
-subplot(1,3,3); imshow(predicted == ground_truth); title('Correct Pixels (white)');
+% --- OUTPUT RISULTATI ---
+fprintf('\n========================================\n');
+fprintf('   RISULTATI VALUTAZIONE DATASET\n');
+fprintf('========================================\n');
+fprintf('Totale immagini:  %d\n', num_files);
+fprintf('Accuracy:         %.4f\n', accuracy);
+fprintf('Precision:        %.4f\n', precision);
+fprintf('Recall:           %.4f\n', recall);
+fprintf('Dice Score (F1):  %.4f\n', dice);
+fprintf('----------------------------------------\n');

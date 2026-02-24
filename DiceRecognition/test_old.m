@@ -2,7 +2,7 @@ close all;
 clear all;
 
 %% 1. CARICAMENTO IMMAGINE
-img_path = "../datasets/dataset_train/images/image_0031.png"; 
+img_path = "../datasets/dataset_train/images/image_0003.png"; 
 img = imread(img_path);
 figure, imshow(img), title("1. Immagine Originale");
 
@@ -10,6 +10,10 @@ figure, imshow(img), title("1. Immagine Originale");
 hsv = rgb2hsv(img);
 S = hsv(:,:,2);
 V = hsv(:,:,3);
+
+figure,
+subplot(1, 2, 1), imshow(S), title("S channel");
+subplot(1, 2, 2), imshow(V), title("V channel");
 
 t1 = graythresh(S); 
 S_bin = imbinarize(S, t1);  
